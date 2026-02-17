@@ -9,9 +9,8 @@ import com.somedomain.collab_editor.auth.User;
 import com.somedomain.collab_editor.document.Document;
 
 public interface AccessRequestRepository extends JpaRepository<AccessRequest, Long> {
-    List<AccessRequest> findByDocument(Document document);
+    Optional<AccessRequest> findByDocumentAndRequester(Document doc, User requester);
     List<AccessRequest> findByRequester(User requester);
-    Optional<AccessRequest> findByDocumentAndRequester(Document document, User requester);
-    List<AccessRequest> findByDocumentAndStatus(Document doc, AccessRequestStatus status);
-    List<AccessRequest> findByRequesterAndStatus(User requester, AccessRequestStatus status);
+    List<AccessRequest> findByDocument(Document document);
+    void deleteAllByDocument(Document document);
 }

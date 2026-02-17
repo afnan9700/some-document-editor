@@ -1,4 +1,5 @@
-# first java project log
+---
+# Collaborative Document Editor Log
 Before anything, I will first clarify what these ramblings even are. This is an extremely "me-thing", and one I have observed to work really work for me. So I expect no one consider this of any value as I do. Thus, please ignore the fact that I have spent a considerable amount of time typing all of this out instead of actually working on something substantial.
 
 So I heard from somewhere that making collaborative applications can be quite complex, and hence they also serve as a good learning experience. So I thought that I would give it a shot. 
@@ -10,9 +11,9 @@ I will mention it. This whole application is written by chatgpt. Yeah. Its writt
 My step-0 was to give this prompt to chatgpt. 
 ```
 hey I am not very familiar with using spring in java    
-    
+
 I wanna make this project and gain some familiarity in the process.    
-    
+
 a simple collaborative document editor    
 - basic auth with username and password. jwts.    
 - a document is just plain text (maybe we can render it as markdown if possible)
@@ -38,7 +39,7 @@ can we make this? i have worked with js, but dont know much about spring. and i 
 ## chapter 1
 (25-11-14)
 
-I started by setting up the project by using the [spring intializr](https://start.spring.io/) and added all the dependencies chatgpt told me to include. I think this is analogous to doing `npm init` in node.js. And the build tool I decided to go with is Maven (the other option is called Gradle). The reason I went with Maven is again the same, chatgpt told me to. This is only the preliminary stuff, so I am not being too persistent about the reasoning for my choices.
+I started by setting up the project by using the spring intializr and added all the dependencies chatgpt told me to include. I think this is analogous to doing `npm init` in node.js. And the build tool I decided to go with is Maven (the other option is called Gradle). The reason I went with Maven is again the same, chatgpt told me to. This is only the preliminary stuff, so I am not being too persistent about the reasoning for my choices.
 
 About what Maven is... Think of it as a build tool which also handles the dependency management. All of the dependencies are uploaded to Maven Repository (npm registry would be the analog). Maven downloads any of the dependencies from there and adds them to your project directory. And being a build tool means Maven also handles the job of compressing all your application's compiled `.class` files into a single `.jar` file. And apparently such final products are called "artifacts" in this context. I think there is also something called a "dependency `.jar`" that maven outputs, but idk.
 
@@ -84,7 +85,7 @@ To summarize, you could say that `CollabEditorProtoApplication.java` does some l
 
 I wanted to start off by adding the auth related functionality first. Most of it is fairly self-explanatory. So I will explain only the parts that aren't obvious.
 
-### `com.somedomain.collab_editor_proto.auth`
+### `com.somedomain.collab_editor.auth`
 This is the package where we define all the auth related classes and methods. 
 
 #### `User.java`
@@ -146,7 +147,7 @@ There is something worth noting here. Both `@ResponseBody` and `@RequestBody` se
 
 We completed setting up the database related stuff. Now we start implementing the actual authorization logic. We are going to be using JWT (obviously), and I thought that I would also implement both access and refresh tokens. We are going to utilize the Spring Security framework to make all of it. Apparently Spring Security works using "Filters". Filters are a servlet-level component, and they intercept a request before it reaches the `DispatcherServlet`. This makes sure that only the authorized requests enter the Spring MVC environment (which is somehow more secure).
 
-### `com.somedomain.collab_editor_proto.auth`
+### `com.somedomain.collab_editor.auth`
 #### `User.java`
 A table that stores all users who have a registered account is something that almost all applications have. And typically the authentication related attributes of a user, things such as their username, email, password, permissions, authorities etc. are also stored in the same users table. 
 
@@ -165,7 +166,7 @@ There are mainly 3 types of methods this class provides.
 - Extraction methods. Methods that extract some information from a token.
 - Validation methods. Methods that check if a token is valid. 
 
-The service also has 3 attributes that determine how the methods provided by this service will work. Here, I think the values of these are set from the `application.yaml` file.
+The service class also has 3 attributes that determine how the methods provided by this service will work. Here, I think the values of these are set from the `application.yaml` file.
 
 `generateAccessToken()` and `generateRefreshToken()` are the generator methods. It makes use of the helper method `buildToken()` to work.
 
@@ -200,26 +201,26 @@ All of the logic the filter should perform is to be written in the `doFilterInte
 
 The `filterChain` variable that `doFilterInternal()` takes as parameter represents the list of filters which still need to get executed. At the end of the function, the method `filterChain.doFilter(request, response)` is called. And I believe it forwards the request and response objects to the next filter in the list. (sounds very similar to middleware and next() in express). The same method also forwards the request and response objects to the `DispatcherServlet` when all filters have been executed.
 
-The purpose of this class is simple. It verifies whether the JWT present in the request is valid or not. If the JWT is valid, an authentication object for the user is created and stored in the security context. Otherwise nothing happens and later, the request and response objects are forwarded to the next filter.
+The purpose of this class is simple. It verifies whether the JWT present in the request header is valid or not. If the JWT is valid, an authentication object for the user is created and stored in the security context. Otherwise nothing happens and later, the request and response objects are forwarded to the next filter.
 
-An authentication object (implementations of an interface `Authentication`) is used by spring security to track the authentication status of a user. An authentication object includes information about the user such as
+An authentication object (implementations of the interface `Authentication`) is used by spring security to track the authentication status of a user. An authentication object includes information about the user such as
 - User identity (such as username).
-- Authentication status. Whether or not the user has been authentication. This allows for creation of authentication objects even for unauthenticated users.
+- Authentication status. Whether or not the user has been authenticated. This allows for creation of authentication objects even for unauthenticated users.
 - A list of all authorities the user has. 
 
 The `SecurityContext`, component that stores authentication objects is a `ThreadLocal` storage. What it means is that the data stored in `ThreadLocal` can be accessed from anywhere in the application but other threads cannot access it. The reasoning for this design choice is that in spring, each request is typically handled by one thread of the application. Threads are not concerned with the authentication statuses of users whose requests are being handled by other threads. So, it makes sense to restrict the access to that information only to the current thread. Hence the `ThreadLocal` storage. After the completion of request, spring security automatically clears the security context.
 
-But why even Security context? Why not just embed the authentication information in the request object itself? Like in express. I don't really know myself. Maybe it makes the code neater? One reason could be that this decouples the rest of the application from the servlet layer. The servlet can be said to consist methods and classes handling things such `HttpServletRequest`,  `HttpServletResponse`, `Filter`, `DispatcherServlet` etc. The parts of the application such as controllers, services and repositories don't interact with any of those components. If the authentication information was included in the request object, it would have to be passed between all components of the application which could be messy.
+But why even Security context? Why not just embed the authentication information in the request object itself? Like in express. I don't understand it myself. Maybe it makes the code neater? One reason could be that this decouples the rest of the application from the servlet layer. The servlet can be said to contain methods and classes handling things such `HttpServletRequest`,  `HttpServletResponse`, `Filter`, `DispatcherServlet` etc. The parts of the application such as controllers, services and repositories don't interact with any of those components. If the authentication information was included in the request object, it would have to be passed between all components of the application which could be messy. So it is instead embedded in this globally accessible class called security context.
 
 Don't know what `ServletException` is. Seems that its something tomcat might throw.
 
-`UsernamePasswordAuthenticationToken` is the concrete class of the object that gets stored in the security context. It is an implementation of the `Authentication` interface for systems that use username and password for authentication. The token contains information about the user such as their username, authorities they have etc. We also used a class called `WebAuthenticationDetailsSource` here to get some information about the request such the IP address, session ID, etc.
+`UsernamePasswordAuthenticationToken` is the concrete class of the object that gets stored in the security context, the aforementioned authentication object. It is an implementation of the `Authentication` interface for systems that use username and password for authentication. The token contains information about the user such as their username, authorities they have etc. We also used another class called `WebAuthenticationDetailsSource` here to get some information about the request such the IP address, session ID, etc.
 
 I will mention one thing though. I am skeptical about the database call this line is making
 ```java
 UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 ```
-I don't understand why chatgpt wanted to verify the token by making a db call. If hashing of the header and payload of the JWT yielded the signature, is that not sufficient to say that the user was authenticated? Making a database call for every single request feels a little expensive. It seems that the reason to check the database is to avoid some very specific cases such as the token remaining valid even after a user has deleted their account or some authorities of the user got revoked or something else. 
+I don't understand why chatgpt wanted to verify the token by making a db call. If hashing of the header and payload of the JWT yielded the signature, is that not sufficient to say that the user was authenticated? Making a database call for every single request feels a little expensive. It seems that the reason to check the database is to avoid some very specific edge cases such as the token remaining valid even after a user has deleted their account or some authorities of the user got revoked or something else. 
 
 So the reason is consistency? Maybe I should consider caching that data in future. That way, only the first request user makes would be slower, and the subsequent ones would be faster (if i was using LRU-like caching. but idk much about caching).
 
@@ -232,8 +233,8 @@ The `securityFilterChain()` method configures stuff related to how requests rece
 - The next method permits anyone to make requests to routes starting with `/auth/`. We do it because the `/auth/` routes are going to be the login and register ones, and it does not make sense to protect them.
 I observed it and don't know the reason why, but all of the above mentioned "configurations" were implemented as a chain of methods. And another detail is that all of those methods take arrow functions as parameters. Maybe its some pattern I should know.
 
-We also add our `JwtFilter` to the filter chain using the same chain of methods.
-(if i am correct) `UsernamePasswordAuthenticationFilter` is the filter that checks the security context and either allows the request or redirects it to the log in page. We add our `JwtFilter` *before* the `UsernamePasswordAuthenticationFilter` because if `JwtFilter` adds an authentication object to the security context, the `UsernamePasswordAuthenticationFilter` will directly allow the request.
+We add the `JwtFilter` to the filter chain using the same chain of methods.
+(if i am correct) `UsernamePasswordAuthenticationFilter` is the filter that checks the security context and either allows the request or redirects it to the log in page. We add `JwtFilter` *before* the `UsernamePasswordAuthenticationFilter` because if `JwtFilter` adds an authentication object to the security context, the `UsernamePasswordAuthenticationFilter` will directly allow the request.
 
 The `userDetailsService()` method is I think just a way to expose our custom user details service such that spring security can use it.
 
@@ -285,7 +286,7 @@ SLF4J provides methods that your application can use to emit standard log events
 
 I have not integrated an actual implementation of a logging framework yet. But I am using SLF4J. Chatgpt said that I should also log some non-error events too, especially when its related to auth. I don't know why though. I mean, why is logging important in auth related contexts? Idk. Anyway I added some logs such as `Sign in attempt by x`, `Sign up successful`, etc.
 
-### `com.somedomain.collab_editor_proto.common`
+### `com.somedomain.collab_editor.common`
 
 #### `GlobalExceptionHanlder.java`
 Nothing to say really. 
@@ -298,6 +299,8 @@ Those "exception handling methods" expect to receive a parameter (which is the e
 We defined all the custom exceptions in here which will be throw by the application's Service classes. 
 
 Tbh I don't really know why I should not just use the generic `AppException` with a custom message and status code everywhere. What's the point of having `NotFoundException`, `UserAlreadyExistsException` when the exact same functionality can be achieved using only the `AppException`? Idk, maybe defining custom exception classes is preferrable when the exception is thrown in several places. 
+
+And with that, auth is done (kind of), and I will think about how I will proceed with the actual application now.
 
 ---
 
@@ -319,29 +322,36 @@ Before proceeding, I will lay out the exact functionalities I want to have once 
 - A document can be shared to other users via "invite links". An invite link is associated to a specific document.
 - The invite link does not grant the user access to the document directly. After the user uses the invite link, their invitation enters a pending state. I am calling these pending invitations "requests". A request is uniquely associated to a document and a user (the user requesting the access to a document). Each document can have requests from multiple users at the same time, and each user can also have requests to multiple documents pending at the same time. So each document might have a "Pending User Requests" list, and each user might have a "Pending Document Requests" list.
 - The owner of the document sees the users that are requesting the access and decides to either approve the requests or not. If the request is approved, the user gets granted permissions to the document, and the document appears in that user's "Shared documents" list. If the request is denied, the document doesn't appear in the Shared documents list. In either case, the document gets removed from the "Pending User Requests" list of the document and the "Pending Document Requests" list of the user. 
-- Each document can be accessed by only one user at one time. We could add a column to the document that represents whether any user currently has the document open. The value of the column gets modified at times of opening and closing the document. But there is a very subtle but important problem with this (was pointed out by gpt). I don't know how but, seems that its possible that a user might exit a document without releasing the lock. If that happens, the document would stay locked forever. It can be avoided by simply adding an expiration time for the lock. 
+- Each document can be accessed by only one user at one time. We could add a column to the document that represents if any user currently has the document open. The value of the column gets modified at times of opening and closing the document. But there is a very subtle but important problem with this (was pointed out by gpt). I don't know how but, seems that its possible that a user might exit a document without releasing the lock. If that happens, the document would stay locked forever. It can be avoided by simply adding an expiration time for the lock. 
   But there is still a problem - deciding the expiration time. Ideally, I would want the expiration to be very small - something like a minute. And expiration time keeps updating as long as the user is "active". But how do I even detect if the user has become "inactive"? I don't think I have a way without making way too complex. So I have decided to go with a late expiration time. I think it would be good enough, especially since this is all for a very specific edge case.
 
-I will now explain why we went with the schema we went with.
+I will now explain why we went with the schema we did.
 
 The following are all the entities that are involved
-- **`Document`**
-  The most basic entity. Here is where all the content the document contains goes. It also has some metadata such as the `ownerId`, `createdAt` etc. The purpose of `@Version` is to avoid lost update problems. As the documents have multi-user access, lost updates can occur. Whenever a user reads or writes a document, it's version is also read. The user makes the write only if the version read during the read operation matches the version read during the write operation. Otherwise, the write is rejected. Version value at read time and version value at write time not matching is an indication that the initially read document is of a stale state than the one being written.
-- **`DocumentPermission`**
+- **`document/Document.java`**
+  The most basic entity. Here is where all the content the document contains goes. It also has some metadata such as the `ownerId`, `createdAt` etc. The purpose of `@Version` is to avoid lost update problems. As the documents have multi-user access, lost updates can occur. Whenever a user reads or writes a document, it's version is also read. The user makes the write only if the version read during the read operation matches the version read during the write operation. Otherwise, the write is rejected. Version value at read time and version value at write time not matching is an indication that the initially read document is of a stale state than the one being written to.
+- **`permission/DocumentPermission.java`**
   My initial instinct was to store a list of `(user,permisssion)` values in the Document table itself. But that would violate the first normal form, and would make queries like "find all documents where user x has permission y" slow. So document permissions go in their own table. 
-  There is another important thing to note here. The `role` field can take only one value. This is an intentional design choice because all users who have permissions to edit obviously also have permissions to read. But this choice can become a constraint when a new role is entirely separate and doesn't fit into the "hierarchy". 
-- **`DocumentLock`**
+  There is another important thing to note here. The `role` field can take only one value. This is an intentional design choice because all users who have permissions to edit obviously also have permissions to read. But this choice can become a constraint to add new roles that are entirely orthogonal to other roles and don't fit into the "hierarchy". 
+- **`lock/DocumentLock.java`**
   This just contains information about the document that is locked, the user who has placed the lock, lock and expiration times. A new row is added once a user starts editing a document, and deleted once the user exits editing the document. If the current time is past the expiration time, the row is deleted. 
   As each document has only a single lock, this information could have been stored in the Document table itself. And that's what I initially thought too. But chatgpt insisted that we store in a separate table. The reason being separation of concerns. The whole mechanism of locking is something that is much different from what the responsibilities of the Document table are. So it makes sense to separate them to keep things neat. 
-- **`Invite`**
+- **`invite/Invite.java`**
   The owner generates an invite link for a document and shares it with their friend. When the friend uses the invite link, the backend needs a way verify that the link was actually generated by the backend itself. So, we store invites in the database. If invite link used by the friend is valid, the corresponding invite token exists in the database. 
-- **`AccessRequest`**
-  Similar to DocumentPermission, an AccessRequest row is also uniquely associated to a user and a document. Thus it needs to be stored in a different table. After the invite token has been validated, it becomes an access request and enters the pending state.
+- **`access/AccessRequest.java`**
+  Similar to DocumentPermission, an AccessRequest row is also uniquely associated to a user and a document. Thus it needs to be stored in a different table. After the invite token has been validated, it becomes an access request and enters the pending state. Once, the request is here, it is up to the document owner to approve or reject it. If approved, a new row gets added to the DocumentPermission table, and if declined, nothing happens. Either way, the access request is deleted after the approval or rejection of the request. 
 
-Also added the repository interfaces for each but nothing much to say about it. Will proceed with the rest of it later.
+I am a tiny bit skeptical about the directory structure of all of this though. I mean, I am more used to the convention of separation of files based on "layer", than separation based on "responsibility". The latter is a lot less opinionated, so a bit concerned that this layout ever bites me in the back.
+
+Also added the repository interfaces for each by the way, though there isn't much to say about it. 
+
+Will proceed with the rest later.
 
 ---
 ## chapter 6
+(26-2-17)
+(no comments about the date please)
 
+it feels like most of the service and controller layer stuff is straightforward...? it may look complex, but if you take a minute and read, it really is fairly straightforward. 
 
 ---
