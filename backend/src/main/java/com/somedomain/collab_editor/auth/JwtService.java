@@ -73,6 +73,10 @@ public class JwtService {
         return extractExpiration(token).before(new Date());
     }
 
+    public long getRefreshTokenExpirationMs() {
+        return refreshTokenExpirationMs;
+    }
+
     private Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
     }

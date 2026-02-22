@@ -96,4 +96,8 @@ public class AuthService {
     }
 
     public record AuthResponse(String accessToken, String refreshToken) {}
+
+    public UserRepository getUserRepository() {
+        return userRepository;
+    }
 }
