@@ -4,7 +4,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/app",
-    // "outDir": "dist",
+    "rootDir": "./src", 
     "types": []
   },
   "include": [
