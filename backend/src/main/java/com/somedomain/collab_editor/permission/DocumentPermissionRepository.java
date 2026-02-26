@@ -19,7 +19,7 @@ public interface DocumentPermissionRepository extends JpaRepository<DocumentPerm
 
     // custom query to fetch permissions with document metadata for a user
     @Query("""
-        select new DocumentMetaDto(
+        select new com.somedomain.collab_editor.document.DocumentMetaDto(
             d.id, d.title, d.owner.id, d.owner.username, d.createdAt, d.lastModified, p.level
         )
         from DocumentPermission p

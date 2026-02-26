@@ -28,8 +28,8 @@ public class AuthController {
     record SignupRequest(String username, String password) {}
     record LoginRequest(String username, String password) {}
     record RefreshRequest(String refreshToken) {}
-    record ClientAuthResponse(String accessToken) {}
-    record UserInfoResponse(Long id, String username) {}
+    public record ClientAuthResponse(String accessToken) {}
+    public record UserInfoResponse(Long id, String username) {}
 
     private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
         Duration duration = Duration.ofMillis(jwtService.getRefreshTokenExpirationMs());

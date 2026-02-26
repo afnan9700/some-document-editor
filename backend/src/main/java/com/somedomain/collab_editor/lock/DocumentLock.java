@@ -1,18 +1,32 @@
 package com.somedomain.collab_editor.lock;
 
-import com.somedomain.collab_editor.document.Document;
-import com.somedomain.collab_editor.auth.User;
-
 import java.time.Instant;
 
-import jakarta.persistence.*;
+import com.somedomain.collab_editor.auth.User;
+import com.somedomain.collab_editor.document.Document;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.MapsId;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "document_locks")
 public class DocumentLock {
 
+    // 1. Define a basic serializable ID for JPA context tracking
     @Id
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    private Long id;
+
+    // 2. Changed to @OneToOne because a document mathematically has only one lock
+    // 3. Use @MapsId to bind the primary key directly to this foreign key
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId 
     @JoinColumn(name = "document_id", nullable = false)
     private Document document;
 
@@ -35,7 +49,11 @@ public class DocumentLock {
         this.expiresAt = expiresAt;
     }
 
-    // getters/setters
+    // --- Domain Getters and Setters ---
+    
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
     public Document getDocument() { return document; }
     public User getLockedByUser() { return lockedByUser; }
     public Instant getLockedAt() { return lockedAt; }

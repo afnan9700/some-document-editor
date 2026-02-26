@@ -11,10 +11,10 @@ import com.somedomain.collab_editor.auth.User;
 public interface DocumentRepository extends JpaRepository<Document, Long> {
     List<Document> findByOwner(User owner);
     
-    // Custom query to fetch only metadata for documents owned by a user
+    // Custom query to fetch only metadata for documents to which user is the owner
     @Query("""
-        select new DocumentMetaDto(
-            d.id, d.title, d.owner.id, d.owner.username, d.createdAt, d.lastModified, null
+        select new com.somedomain.collab_editor.document.DocumentMetaDto(
+            d.id, d.title, d.owner.id, d.owner.username, d.createdAt, d.lastModified
         )
         from Document d
         where d.owner = :owner

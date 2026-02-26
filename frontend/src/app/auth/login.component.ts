@@ -10,11 +10,8 @@ import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-login',
-
   standalone: true,
-
   imports: [ReactiveFormsModule],
-
   template: `
     <main class="max-w-lg mx-auto p-6">
       <h1 class="text-2xl font-semibold mb-4">Sign in</h1>
@@ -62,34 +59,26 @@ import { Router } from '@angular/router';
       </form>
     </main>
   `,
-
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LoginComponent {
   private fb = inject(NonNullableFormBuilder);
-
   private auth = inject(AuthService);
-
   private router = inject(Router);
 
   // form (reactive)
-
   readonly form = this.fb.group({
     username: ['', [Validators.required, Validators.minLength(3)]],
-
     password: ['', [Validators.required, Validators.minLength(6)]],
   });
 
   // signals
-
   readonly loading = signal(false);
-
   readonly error = signal<string | null>(null);
 
   get username() {
     return this.form.controls.username;
   }
-
   get password() {
     return this.form.controls.password;
   }
@@ -97,26 +86,21 @@ export class LoginComponent {
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-
       return;
     }
 
     this.loading.set(true);
-
     this.error.set(null);
 
     const value = this.form.getRawValue();
-
     this.auth.login(value).subscribe({
       next: () => {
         this.loading.set(false);
 
         this.router.navigateByUrl('/');
       },
-
       error: (err) => {
         this.loading.set(false);
-
         if (err && err.status === 401) this.error.set('Invalid credentials');
         else this.error.set('Login failed — try again');
       },
