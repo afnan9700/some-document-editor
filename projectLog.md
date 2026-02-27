@@ -1,4 +1,3 @@
----
 # Collaborative Document Editor Log
 Before anything, I will first clarify what these ramblings even are. This is an extremely "me-thing", and one I have observed to work really work for me. So I expect no one consider this of any value as I do. Thus, please ignore the fact that I have spent a considerable amount of time typing all of this out instead of actually working on something substantial.
 
@@ -145,13 +144,15 @@ There is something worth noting here. Both `@ResponseBody` and `@RequestBody` se
 ## chapter 3
 (25-11-30, 25-12-5, 25-12-6)
 
-We completed setting up the database related stuff. Now we start implementing the actual authorization logic. We are going to be using JWT (obviously), and I thought that I would also implement both access and refresh tokens. We are going to utilize the Spring Security framework to make all of it. Apparently Spring Security works using "Filters". Filters are a servlet-level component, and they intercept a request before it reaches the `DispatcherServlet`. This makes sure that only the authorized requests enter the Spring MVC environment (which is somehow more secure).
+We completed setting up the database related stuff. Now we start implementing the actual authorization logic. We are going to be using JWT (obviously), and I thought that I would also implement both access and refresh tokens. We are going to utilize the Spring Security framework to make all of it. Apparently Spring Security works using "Filters". Filters are a servlet-level component, and they intercept a request before it reaches the `DispatcherServlet`. This makes sure that only the authorized requests enter the Spring MVC environment (which is for some reason "more secure").
 
 ### `com.somedomain.collab_editor.auth`
 #### `User.java`
 A table that stores all users who have a registered account is something that almost all applications have. And typically the authentication related attributes of a user, things such as their username, email, password, permissions, authorities etc. are also stored in the same users table. 
 
-As Spring Security can be used for implementing authentication and authorization, it needs a way to access the authentication related information of users. Thus, Spring Security requires our `User` entity class to implement an interface called `UserDetails`. If a class implements the `UserDetails` interface, the class should provide definitions for the methods such as `getUsername()`, `getPassword()`, `getAuthorities()` etc. Also, seems that if any methods specified by the `UserDetails` interface are not relevant to your application, you simply return `true`.
+As Spring Security can be used for implementing authentication and authorization, it needs a way to access the authentication related information of users. Thus, Spring Security requires our `User` entity class to implement an interface called `UserDetails`. If a class implements the `UserDetails` interface, the class should provide definitions for the methods such as `getUsername()`, `getPassword()`, `getAuthorities()` etc. 
+
+Also, seems that if any methods specified by the `UserDetails` interface are not relevant to your application, you simply return `true`.
 
 #### `CustomUserDetailsService.java`
 To me, this feels like the user repository analog for Spring Security. I could be wrong.
@@ -265,6 +266,7 @@ Not much to say here really.
 
 I will start working on the rest of the application tomorrow now. I was so unprepared for how complex Spring Security was going to be. I watched so many videos but nothing seemed to click. I will give it another try sometime. I didn't know it during the process of me trying learn it, but apparently, Spring Security is actually considered one of the most complex parts of Spring. And here, I started with the expectation that it was going to be something trivial. I mean, I am speaking from experience with node.js. Anyway, I feel relieved to know that me finding it difficult to be justified. I was starting to worry that I could just be too dumb for spring haha. 
 
+---
 ## chapter 4
 (25-12-13)
 
@@ -349,9 +351,147 @@ Will proceed with the rest later.
 
 ---
 ## chapter 6
-(26-2-17)
+(26-2-25, 26-2-26)
 (no comments about the date please)
 
-it feels like most of the service and controller layer stuff is straightforward...? it may look complex, but if you take a minute and read, it really is fairly straightforward. 
+It feels like most of the service and controller layer stuff is straightforward...? it may look complex, but if you take a minute and read, it really is fairly straightforward. The database queries in the service layer could use some optimization, but I have decided to proceed with the frontend now. 
+
+I am using Angular as the core frontend framework. I have never worked with Angular before, so building it might take me some time. I am also using a component library called DaisyUI, which I think works using Tailwind CSS. Other than that, there's Prosemirror. I am not entirely sure about what exactly prosemirror is yet. I just knew that the app was going to require some form of document editing interface. And since I plan to add "collaboration" in future, I thought that I should make sure that the document editing module I use is flexible with it. So I looked into all of it a bit, and seems that Prosemirror does what I am looking for. It also integrates really well with a very popular javascript CRDT library called Yjs apparently (which I might use for this app). 
+
+(i suggest seeing [[learning-angular]] once btw)
+
+...
+
+Alright, timeskip, and I just completed implementing so many different things. I started off with the intention to only implement the auth side of things on the frontend first. But along the way, ended up making some small changes to the backend and added a few additional frontend features too. 
+
+But seriously, there is so much I want to discuss because of how I was unfamiliar with almost all of what I did. Got to learn many new things, though all of it was from GPT. So gotta talk about them here, both because I want to, and because I believe it might help me internalize the concepts better. 
+
+The flow is going to be mostly organic. I am not trying to follow any rules here. I will explain things in the order I implemented them. 
+
+### auth related frontend
+#### preliminary backend changes
+My backend uses the refresh and access token auth, so my first thoughts were about how I would store those tokens on the frontend. Local storage is highly discouraged because it is prone to "XSS attacks" (not sure what it means), and cookies are discouraged because of CSRF. 
+
+GPT suggested a very clever design. We store access tokens in-memory, and refresh tokens as httpOnly cookies. Yes, httpOnly cookies are prone to CSRF, but refresh tokens are useful only because it returns the response containing the access token. And because of CORS, no malicious website can read the response returned by the server, rendering the `/refresh` route useless to the attacker. Remember, CORS is handled by the browser, not the server. If a request gets sent to the server from a malicious origin, the server processes it like any other request and sends back the response. It is the browser which intercepts and decided whether to actually show the response to the requester or not. The server can however configure which sites can be whitelisted by CORS, and the browser would let requests from those sites in. That is the reason why we store access tokens in-memory, and not as cookies. 
+
+I made the backend to set `http://localhost:4200` as an allowed origin. The CORS configuration in spring is applied at filter-level. It is attached to the `securityFilterChain` to which we also attached the `JwtFilter`. Like I said it the last time, this is the single file that I don't understand very well, so... I am just going to kinda brush it off for now. But remember that you can configure a lot, like you can even decide the specific headers and HTTP methods that should be whitelisted. 
+
+Oh, and I also edited the `AuthController` to send the refresh token as a httpOnly cookie. Again remember, httpOnly means that javascript code cannot read or alter the cookie, hence data to be stored as a httpOnly cookie should be explicitly sent as a httpOnly cookie by the server. Added a `/me` route for auth status due to the same reason.
+
+#### `auth/auth.service.ts`
+Service files are typically the ones that perform the whole interaction with the backend. This file does the same, it defines the functions that can be used to make requests to the backend and get responses. 
+
+From how I understand it, a `signal` triggers the component that uses it to re-render when it's state changes. If the value of a state needs to derived from a different state (like here with `isAuthenticated`), we use `computed`. Similar to `signal`, a re-render of the component that uses the `computed` value is triggered if the `computed` value changes. 
+```typescript
+// in-memory access token (not persisted to localStorage by default)
+private accessToken = signal<string | null>(null);
+// expose computed auth state
+readonly isAuthenticated = computed(() => !!this.accessToken());
+```
+
+The following were the lines that confused me the most.  
+```typescript
+// BehaviorSubject for user info
+private meSubject = new BehaviorSubject<MeResponse | null>(null);
+// expose as an Observable
+readonly me$ = this.meSubject.asObservable();
+```
+Other components need information (`MeResponse`) about the currently logged in user, and they also need to be notified if the value ever changes. So we use `Subject` instead of a normal variable. 
+
+But why subject and not signal? It feels to me like the similar goal can be achieved using a signal too.
+```typescript
+private meSignal = signal<MeResponse | null>(null);
+readonly me = computed(() => this.meSignal());
+```
+Then why did GPT use Subject? It seems that the convention is to use signals for basic UI rendering purposes, and subjects for more "complex" purposes (such as those that might involve `pipe()`, `swtichMap()` etc.)
+
+There isn't much to say about the service methods. They just make calls to the backend and set values to the signals and subjects.
+
+#### `auth/login.component.ts`
+Apparently, its something called Reactive Forms that's used most commonly to make forms in Angular. You define a form group, define the children of the form group (called form controls), bind them to `<input>` and `<button>` tags in the template, and that's pretty much it.
+
+We use the signals `loading` and `error` to conditionally render the frontend as "loading" when the request to the backend is in progress, or to display the error messages. 
+
+`changeDetection: ChangeDetectionStrategy.OnPush` inside the decorator is apparently used for optimization purposes. Seems that by it's default behavior, Angular performs checks and re-renders for every small event such a click or tap. `ChangeDetectionStrategy.OnPush` tells angular to avoid performing those unnecessary checks. Instead, angular will now perform checks and re-renders only if either some state changes, or if some event is triggered (such as clicking the submit button).
+
+I am not sure what `this.form.markAllAsTouched()` is, and have decided to ignore it for now.
+
+All the `aria-x` attributes in the HTML template are for accessibility reasons. GPT added them for some reason, so that's just why they're there.
+
+#### `core/jwt.interceptor.ts`
+Angular provides interceptor functions (of type `HttpInterceptorFn`) that can intercept a request made to a route. A `HttpInterceptorFn` takes two parameters `req` and `next`, where `req` is the request that was intercepted and calling `next(req)` will forward the request to whatever is in the chain next. 
+
+Our backend expects the `Authorization` header to be attached to every request that gets made. Reading the access token in every service to attach the header before making request is too much repeated logic and just tedious. So we instead use an interceptor function to attach those headers. 
+
+`jwtInterceptor` handles one more very important job other than attaching tokens - calling the `/refresh` endpoint if the access token expires. It initially seemed odd to me to make the interceptor function do it, but suddenly it feels like the perfect job for the interceptor function. Also, this is probably some of the most clever and cool GPT has written so far...
+
+Alright, so the following are the main jobs of this function
+- Attach the access token to the request being made (if it is made to a non-auth route).
+- If the request fails with an error, it may happen due to two reasons. Either the access token expired (in which case it would be a `401` error), or it was an error irrelevant to the interceptor (in which case we just return the error and do nothing. handling such error is not interceptor's job).
+- If the error code was `401`, it means that the new access needs to be set, i.e., a call to `/refresh` needs to be made.
+
+Now the problem... A call to `/refresh` is asynchronous. So it is possible the frontend may push even more requests to be made while the `/refresh` request is still under processing. We know that executing those requests now is going to result in a `401` error because the new access token has not been received yet. So executing those requests would be a waste of resources. Thus, we don't execute those requests, and instead "queue" them until the new access token has been set, and then we run all the queued requests. This design is amazing because of how the user won't know anything about the access token expiration. 
+
+Now to the specifics...
+```typescript
+let refreshing = false;
+let refreshSubject = new BehaviorSubject<string | null>(null);
+```
+The `refreshing` variable represents if a request to `/refresh` has been made. If true, the interceptor will queue the subsequent requests, otherwise a request to `/refresh` gets made and `refreshing` gets set to true.
+
+`refreshSubject` is used for that "queue" sort of mechanism to queue up the subsequent requests. We don't use a literal queue, but instead just execute the retry of HTTP request in the `refreshSubject`'s `pipe()` function. After the new access token is received, `refreshSubject` is set to token's value, and the change is emitted to all of `refreshSubject`'s listeners and their respective `pipe()` functions get executed, completing all the "queued up" requests.
+```typescript
+// executing those "queued up" requests
+return refreshSubject.pipe(
+	filter(t => t !== null),  // rejecting null emissions until we have a new token
+	take(1),  // take the next emitted token (after refresh completes)
+	switchMap(token => {
+		// retry the original request with the new token
+		const cloned = authReq.clone({
+			setHeaders: token ? { Authorization: `Bearer ${token}` } : {},
+			withCredentials: true,
+		});
+		return next(cloned);
+	})
+);
+```
+I don't understand why we used `switchMap` here though. 
+
+It is possible that the call to `/refresh` itself fails, which could suggest that refresh token may have expired. In that case, we log out the user and redirect `/login`.
+
+And that was it. Seems that this pattern is called "silent refresh". Cool.
+
+Oh, and the interceptor needs to be registered in the `app.config.ts` file so that angular will know to use it. 
+```tyepscript
+providers: [
+	provideHttpClient(withInterceptors([jwtInterceptor]))
+]
+```
+I don't know much about it.
+
+#### `core/api.service.ts`
+All services make requests only to the routes (such as `auth/login`) and don't include the name of the origin. This choice is intentional because of obvious reasons. You might suggest doing something like `http.post<T>(${environment.apiBaseUrl}/users)`, where `environment.apiBaseUrl` is exported by a file. It would work, and tbh, I can't really see what's wrong (other than tight coupling with the `environment.ts` file specifically (but feels like that shouldn't be a problem because you are allowed to alter the `apiBaseUrl` variable right? idk)).
+
+We take it to the next level and define a separate service (`api.service.ts`) that makes those HTTP calls to the appropriate URLs. Other services use this service to make requests instead of directly using `http`.
+
+But it doesn't stop there. We want the specific API URL that the `ApiService` will use to also be injected as a dependency by Angular's dependency injection system (i have no idea why). The problem is that API URL is not a class of it's own, but rather just a string. And Angular's DI doesn't work for such strings, so we use this thing called `InjectionToken` to overcome that restriction. The file `core/tokens.ts` contains that `API_BASE_URL` dependency.
+
+Since `API_BASE_URL` is a dependency it needs to be configured in the `providers` list of `app.config.ts`.
+
+#### misc
+And that was all for today. 
+
+I actually ran into many really annoying bugs and lost so many hours trying to fix them. These aren't the intelligent bugs, but instead the really frustrating kind of ones, such as the configuration of `ES6` or `CommonJS` in the `tsconfig.app.json` file. I spent so much time trying to fix it but nothing worked. Like one time the code literally disappeared from my files wtf?! I thought that I would quickly make a commit to avoid losing progress, and suddenly, for whatever reason, it starts to work after making the commit. I hate that shi so much aoefu aoef uenf
+
+I think I want to change the schema of my database a bit. Currently, the `content` field is stored in the `Document` table itself. And that doesn't feel right to me because of how radically different the field `content` is compared to other fields of the `Document` table. The current design also made me have to do all the spaghetti with `DocumentMetaDto` projections. I think it would be much cleaner if I had stored `content` is `DocumentContent` table separately.
+
+I thought that I would implement it today, but turns out, its not as simple as I thought. GPT suggest I implement  jpa cascading something. And its my first time even hearing it, so I will have to first look into all of it before proceeding with the implementation. 
+
+The UI is also very bland currently. DaisyUI provides some really pretty themes which I would love if my application provided the functionality to switch between. So that is also something I really want to add. 
+
+Anyway, we haven't even started working with the actually complex side of things yet. Websockets, prosemirror integration, y.js. And I am already a bit overwhelmed. 
+
+Its alright. 
+See ya.
 
 ---

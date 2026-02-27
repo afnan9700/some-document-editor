@@ -44,18 +44,20 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(authReq).pipe(
     catchError((err: unknown) => {
+      // if 401 and not an auth endpoint, try refresh flow
       if (err instanceof HttpErrorResponse && err.status === 401 && !isAuthEndpoint(req.url)) {
         if (!refreshing) {
-          refreshing = true;
-          refreshSubject.next(null);
+          refreshing = true;  // refresh process started
+          refreshSubject.next(null);  // current access token is null until the refresh succeeds
 
           // call refresh endpoint
           return auth.refresh().pipe(
             switchMap((tokenResp: unknown) => {
               // after refresh, get new token from service
               const newToken = auth.getAccessToken();
-              refreshing = false;
-              refreshSubject.next(newToken);
+              refreshing = false;  // refresh finished
+              refreshSubject.next(newToken);   // emit new token to waiting requests
+
               // retry the original request with new token
               const cloned = authReq.clone({
                 setHeaders: newToken ? { Authorization: `Bearer ${newToken}` } : {},
@@ -64,6 +66,7 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
               return next(cloned);
             }),
             catchError(err => {
+              // refresh failed, reset state and clear auth
               refreshing = false;
               refreshSubject.next(null);
               // clear auth and escalate error to cause redirect to login
@@ -72,15 +75,18 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
             })
           );
         } else {
-          // wait until refresh finishes
+          // refresh already in progress
           return refreshSubject.pipe(
-            filter(t => t !== null),
-            take(1),
+            filter(t => t !== null),  // rejecting null emissions until we have a new token
+            take(1),  // take the next emitted token (after refresh completes)
             switchMap(token => {
+              // retry the original request with the new token
               const cloned = authReq.clone({
                 setHeaders: token ? { Authorization: `Bearer ${token}` } : {},
                 withCredentials: true,
-              });
+              }
+            );
+              
               return next(cloned);
             })
           );

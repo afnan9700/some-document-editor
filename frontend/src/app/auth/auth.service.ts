@@ -1,6 +1,5 @@
 // src/app/auth/auth.service.ts
 import { inject, Injectable, signal, computed } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import type { AuthResponse, LoginRequest, SignupRequest, MeResponse } from './auth.models';
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { tap, catchError, map } from 'rxjs/operators';
@@ -9,7 +8,6 @@ import { ApiService } from '../core/api.service';
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private api = inject(ApiService);
-  private http = inject(HttpClient);
   // in-memory access token (not persisted to localStorage by default)
   private accessToken = signal<string | null>(null);
   // expose computed auth state
@@ -61,7 +59,10 @@ export class AuthService {
   // load /me
   loadMe(): Observable<MeResponse> {
     return this.api.get<MeResponse>('/auth/me').pipe(
-      tap(me => {this.meSubject.next(me); console.log('Loaded user info', me);}),
+      tap(me => {
+        this.meSubject.next(me); 
+        // console.log('Loaded user info', me);
+      }),
       catchError(err => {
         this.meSubject.next(null);
         return throwError(() => err);
