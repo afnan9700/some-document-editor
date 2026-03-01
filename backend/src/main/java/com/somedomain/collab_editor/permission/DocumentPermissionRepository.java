@@ -9,7 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 import com.somedomain.collab_editor.auth.User;
 import com.somedomain.collab_editor.document.Document;
-import com.somedomain.collab_editor.document.DocumentMetaDto;
+import com.somedomain.collab_editor.document.DocumentSummaryDto;
 
 public interface DocumentPermissionRepository extends JpaRepository<DocumentPermission, Long> {
     Optional<DocumentPermission> findByDocumentAndUser(Document document, User user);
@@ -19,13 +19,13 @@ public interface DocumentPermissionRepository extends JpaRepository<DocumentPerm
 
     // custom query to fetch permissions with document metadata for a user
     @Query("""
-        select new com.somedomain.collab_editor.document.DocumentMetaDto(
-            d.id, d.title, d.owner.id, d.owner.username, d.createdAt, d.lastModified, p.level
+        select new com.somedomain.collab_editor.document.DocumentSummaryDto(
+            d.id, d.title, d.owner.id, d.owner.username, d.lastModified, d.version, p.level
         )
         from DocumentPermission p
         join p.document d
         where p.user.id = :userId
     """)
-    List<DocumentMetaDto> findPermittedMetaByUserId(@Param("userId") Long userId);
+    List<DocumentSummaryDto> findPermittedDocuments(@Param("userId") Long userId);
 
 }

@@ -1,13 +1,8 @@
 package com.somedomain.collab_editor.document;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +55,9 @@ public class DocumentService {
         // doc owner does not need a permission entry in DocumentPermission
         // ownership is determined by doc.owner. owner has all permissions implicitly.
         Document saved = documentRepository.save(doc);
+
+        permissionRepository.save(new DocumentPermission(saved, owner, PermissionLevel.OWNER));
+
         log.info("Document {} created by user {}", saved.getId(), owner.getUsername());
         return saved;
     }
@@ -137,81 +135,11 @@ public class DocumentService {
 
     
     /**
-     * Return list of accessible docs (owned + shared) using lightweight metadata DTOs,
-     * plus lock status and the permission the current user has (null for owned docs).
+     * Return list of accessible docs (owned + shared)
      */
     @Transactional(readOnly = true)
-    public List<DocumentSummaryDto> listAccessibleDocumentsWithStatus(User currentUser) {
-        // 1) fetch owned metadata (your custom query returning DocumentMetaDto)
-        List<DocumentMetaDto> ownedMeta = documentRepository.findOwnedMetaByOwner(currentUser);
-
-        // 2) fetch permitted metadata (your custom query returning DocumentMetaDto; there myPermission will be set)
-        List<DocumentMetaDto> permittedMeta = permissionRepository.findPermittedMetaByUserId(currentUser.getId());
-
-        // 3) Build map of docId -> DocumentMetaDto, merging owned and permitted 
-        Map<Long, DocumentMetaDto> metaById = new LinkedHashMap<>(); // preserve insertion order (owned first)
-        if (ownedMeta != null) {
-            for (DocumentMetaDto m : ownedMeta) {
-                metaById.put(m.id(), m); // owned entries: myPermission will be null (by design)
-            }
-        }
-        if (permittedMeta != null) {
-            for (DocumentMetaDto m : permittedMeta) {
-                metaById.putIfAbsent(m.id(), m);
-            }
-        }
-
-        if (metaById.isEmpty()) return Collections.emptyList();
-
-        // 4) Fetch locks in batch by document ids
-        List<Long> docIds = new ArrayList<>(metaById.keySet());
-        List<DocumentLock> locks = lockRepository.findByDocumentIdIn(docIds);
-
-        // Filter active locks and map by doc id
-        Instant now = Instant.now();
-        Map<Long, DocumentLock> activeLockByDocId = locks.stream()
-            .filter(l -> l.getExpiresAt() == null || l.getExpiresAt().isAfter(now))
-            .collect(Collectors.toMap(l -> l.getDocument().getId(), l -> l));
-
-        // 5) Build DocumentSummaryDto list
-        List<DocumentSummaryDto> result = new ArrayList<>(metaById.size());
-        for (DocumentMetaDto meta : metaById.values()) {
-            DocumentSummaryDto dto = new DocumentSummaryDto();
-            dto.setDocumentId(meta.id());
-            dto.setTitle(meta.title());
-            // ownerId not available in DocumentMetaDto; leave null or extend DTO if you need it
-            dto.setOwnerId(null);
-            dto.setOwnerUsername(meta.ownerUsername());
-            dto.setLastModified(meta.lastModified());
-            dto.setVersion(null); // not fetched in meta DTO; set null unless you add it to meta query
-
-            // Permission: for owned docs we intentionally leave permission null (owner not in permission table)
-            // For permittedMeta entries, DocumentMetaDto.myPermission() contains the PermissionLevel; keep it.
-            if (ownedMeta != null && ownedMeta.stream().anyMatch(m -> m.id().equals(meta.id()))) {
-                dto.setMyPermission(null); // owner -> leave empty per design
-            } else {
-                // permitted docs: if permission present in meta, set it; otherwise, default to VIEWER
-                var p = meta.myPermission();
-                dto.setMyPermission(p == null ? "VIEWER" : p.name());
-            }
-
-            DocumentLock lock = activeLockByDocId.get(meta.id());
-            if (lock != null) {
-                dto.setLocked(true);
-                dto.setLockedByUserId(lock.getLockedByUser().getId());
-                dto.setLockedByUsername(lock.getLockedByUser().getUsername());
-                dto.setLockExpiresAt(lock.getExpiresAt());
-            } else {
-                dto.setLocked(false);
-                dto.setLockedByUserId(null);
-                dto.setLockedByUsername(null);
-                dto.setLockExpiresAt(null);
-            }
-
-            result.add(dto);
-        }
-
-        return result;
+    public List<DocumentSummaryDto> listAccessibleDocumentsWithPermissionLevel(User currentUser) {
+        return permissionRepository.findPermittedDocuments(currentUser.getId());
     }
 
 }

@@ -1,10 +1,22 @@
 package com.somedomain.collab_editor.document;
 
-import com.somedomain.collab_editor.auth.User;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
-import jakarta.persistence.*;
 import java.time.Instant;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.somedomain.collab_editor.auth.User;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 @Entity
 @Table(name = "documents")
@@ -23,8 +35,9 @@ public class Document {
     @Column(nullable = false)
     private String title;
 
-    @Column(columnDefinition = "text")
-    private String content;
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @JoinColumn(name = "content_id")
+    private DocumentContent contentEntity;
 
     @Version
     private Integer version;
@@ -37,16 +50,21 @@ public class Document {
     public Document(User owner, String title, String content) {
         this.owner = owner;
         this.title = title;
-        this.content = content;
         this.createdAt = Instant.now();
         this.lastModified = Instant.now();
+
+        if (content != null) {
+            this.contentEntity = new DocumentContent(content);
+        }
+        else {
+            this.contentEntity = new DocumentContent("");
+        }
     }
 
     // Getters and setters
     public Long getId() { return id; }
     public User getOwner() { return owner; }
     public String getTitle() { return title; }
-    public String getContent() { return content; }
     public Integer getVersion() { return version; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getLastModified() { return lastModified; }
@@ -54,8 +72,20 @@ public class Document {
     public void setId(Long id) { this.id = id; }
     public void setOwner(User owner) { this.owner = owner; }
     public void setTitle(String title) { this.title = title; }
-    public void setContent(String content) { this.content = content; }
     public void setVersion(Integer version) { this.version = version; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public void setLastModified(Instant lastModified) { this.lastModified = lastModified; }
+
+    // direct access to content through the contentEntity relationship
+    public String getContent() {
+        return contentEntity == null ? null : contentEntity.getContent();
+    }
+    // directly set content through the contentEntity relationship
+    public void setContent(String text) {
+        if (contentEntity == null) {
+            contentEntity = new DocumentContent(text);
+        } else {
+            contentEntity.setContent(text);
+        }
+    }
 }

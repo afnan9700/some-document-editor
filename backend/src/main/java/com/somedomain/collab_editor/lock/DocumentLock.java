@@ -23,8 +23,8 @@ public class DocumentLock {
     @Id
     private Long id;
 
-    // 2. Changed to @OneToOne because a document mathematically has only one lock
-    // 3. Use @MapsId to bind the primary key directly to this foreign key
+    // @OneToOne because a document mathematically has only one lock
+    // @MapsId to bind the primary key directly to this foreign key
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @MapsId 
     @JoinColumn(name = "document_id", nullable = false)

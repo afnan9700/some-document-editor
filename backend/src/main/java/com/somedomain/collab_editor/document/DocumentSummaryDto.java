@@ -13,11 +13,11 @@ public class DocumentSummaryDto {
     // permission for the current user: "OWNER" | "EDITOR" | "VIEWER"
     private String myPermission;
 
-    // lock info
-    private boolean locked;
-    private Long lockedByUserId;        // null if unlocked
-    private String lockedByUsername;    // null if unlocked
-    private Instant lockExpiresAt;      // null if unlocked
+    // // lock info
+    // private boolean locked;
+    // private Long lockedByUserId;        // null if unlocked
+    // private String lockedByUsername;    // null if unlocked
+    // private Instant lockExpiresAt;      // null if unlocked
 
     public DocumentSummaryDto() {}
 
@@ -43,15 +43,15 @@ public class DocumentSummaryDto {
     public String getMyPermission() { return myPermission; }
     public void setMyPermission(String myPermission) { this.myPermission = myPermission; }
 
-    public boolean isLocked() { return locked; }
-    public void setLocked(boolean locked) { this.locked = locked; }
+    // public boolean isLocked() { return locked; }
+    // public void setLocked(boolean locked) { this.locked = locked; }
 
-    public Long getLockedByUserId() { return lockedByUserId; }
-    public void setLockedByUserId(Long lockedByUserId) { this.lockedByUserId = lockedByUserId; }
+    // public Long getLockedByUserId() { return lockedByUserId; }
+    // public void setLockedByUserId(Long lockedByUserId) { this.lockedByUserId = lockedByUserId; }
 
-    public String getLockedByUsername() { return lockedByUsername; }
-    public void setLockedByUsername(String lockedByUsername) { this.lockedByUsername = lockedByUsername; }
+    // public String getLockedByUsername() { return lockedByUsername; }
+    // public void setLockedByUsername(String lockedByUsername) { this.lockedByUsername = lockedByUsername; }
 
-    public Instant getLockExpiresAt() { return lockExpiresAt; }
-    public void setLockExpiresAt(Instant lockExpiresAt) { this.lockExpiresAt = lockExpiresAt; }
+    // public Instant getLockExpiresAt() { return lockExpiresAt; }
+    // public void setLockExpiresAt(Instant lockExpiresAt) { this.lockExpiresAt = lockExpiresAt; }
 }
