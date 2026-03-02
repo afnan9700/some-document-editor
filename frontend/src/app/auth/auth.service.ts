@@ -2,7 +2,7 @@
 import { inject, Injectable, signal, computed } from '@angular/core';
 import type { AuthResponse, LoginRequest, SignupRequest, MeResponse } from './auth.models';
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
-import { tap, catchError, map } from 'rxjs/operators';
+import { tap, catchError, map, switchMap } from 'rxjs/operators';
 import { ApiService } from '../core/api.service';
 
 @Injectable({ providedIn: 'root' })
@@ -22,28 +22,24 @@ export class AuthService {
   }
 
   // login: sends credentials; backend returns access token and sets refresh cookie
-  login(payload: LoginRequest): Observable<void> {
+  login(payload: LoginRequest): Observable<MeResponse> {
   return this.api.post<AuthResponse>('/auth/login', payload).pipe(
     tap(res => {
       this.accessToken.set(res.accessToken);
-      this.loadMe().subscribe(); // Side effect
       console.log('Login successful, access token set');
     }),
-    // Use map to transform AuthResponse into void
-    map(() => undefined), 
+    switchMap(() => this.loadMe()), // swtichMap automatically subscribes and unscribes to the observable
     catchError(err => throwError(() => err))
   );
 }
 
   // signup behaves like login: backend issues accessToken & sets refresh cookie
-  signup(payload: SignupRequest): Observable<void> {
+  signup(payload: SignupRequest): Observable<MeResponse> {
     return this.api.post<AuthResponse>('/auth/signup', payload).pipe(
         tap(res => {
         this.accessToken.set(res.accessToken);
-        this.loadMe().subscribe(); // Side effect
         }),
-        // Use map to transform AuthResponse into void
-        map(() => undefined), 
+        switchMap(() => this.loadMe()), 
         catchError(err => throwError(() => err))
     );
   }
