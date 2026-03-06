@@ -3,6 +3,7 @@ package com.somedomain.collab_editor.document;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.time.Instant;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -26,21 +27,40 @@ public class DocumentController {
     private final DocumentService documentService;
     private final LockService lockService;
 
+    public record DocumentResponseDto(Long documentId,
+                                      String title,
+                                      Long ownerId,
+                                      String ownerUsername,
+                                      Instant lastModified,
+                                      Integer version) {}
+
+    public record CreateDocReq(String title, String content) {}
+
     public DocumentController(DocumentService documentService, LockService lockService) {
         this.documentService = documentService;
         this.lockService = lockService;
     }
 
-    public record CreateDocReq(String title, String content) {}
+    private DocumentResponseDto toDto(Document doc) {
+        // owner is guaranteed non-null since a document always has an owner
+        return new DocumentResponseDto(
+                doc.getId(),               // -> documentId
+                doc.getTitle(),
+                doc.getOwner().getId(),
+                doc.getOwner().getUsername(),
+                doc.getLastModified(),
+                doc.getVersion());
+    }
 
-    @PostMapping
+    @PostMapping({"", "/"})
     public ResponseEntity<?> create(@RequestBody CreateDocReq req) {
         User user = SecurityUtils.getCurrentUser();
         var doc = documentService.create(user, req.title(), req.content());
-        return ResponseEntity.ok(doc);
+        DocumentResponseDto dto = toDto(doc);
+        return ResponseEntity.ok(dto);
     }
 
-    @GetMapping
+    @GetMapping({"", "/"})
     public ResponseEntity<?> library() {
         User user = SecurityUtils.getCurrentUser();
         List<DocumentSummaryDto> list = documentService.listAccessibleDocumentsWithPermissionLevel(user);
@@ -60,7 +80,8 @@ public class DocumentController {
         User user = SecurityUtils.getCurrentUser();
         String content = body.get("content");
         var saved = documentService.saveDocument(id, user, content);
-        return ResponseEntity.ok(saved);
+        DocumentResponseDto dto = toDto(saved);
+        return ResponseEntity.ok(dto);
     }
 
     @PostMapping("/{id}/lock")
@@ -94,3 +115,4 @@ public class DocumentController {
         return ResponseEntity.ok(Map.of("status","deleted"));
     }
 }
+

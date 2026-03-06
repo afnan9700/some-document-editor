@@ -20,10 +20,11 @@ public interface DocumentPermissionRepository extends JpaRepository<DocumentPerm
     // custom query to fetch permissions with document metadata for a user
     @Query("""
         select new com.somedomain.collab_editor.document.DocumentSummaryDto(
-            d.id, d.title, d.owner.id, d.owner.username, d.lastModified, d.version, p.level
+            d.id, d.title, o.id, o.username, d.lastModified, d.version, p.level
         )
         from DocumentPermission p
         join p.document d
+        join d.owner o
         where p.user.id = :userId
     """)
     List<DocumentSummaryDto> findPermittedDocuments(@Param("userId") Long userId);

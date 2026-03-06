@@ -1,5 +1,6 @@
 package com.somedomain.collab_editor.document;
 
+import com.somedomain.collab_editor.permission.PermissionLevel;
 import java.time.Instant;
 
 public class DocumentSummaryDto {
@@ -19,7 +20,19 @@ public class DocumentSummaryDto {
     // private String lockedByUsername;    // null if unlocked
     // private Instant lockExpiresAt;      // null if unlocked
 
-    public DocumentSummaryDto() {}
+    public DocumentSummaryDto(Long documentId, String title, Long ownerId, 
+                              String ownerUsername, Instant lastModified, 
+                              Integer version, PermissionLevel levelEnum) {
+        this.documentId = documentId;
+        this.title = title;
+        this.ownerId = ownerId;
+        this.ownerUsername = ownerUsername;
+        this.lastModified = lastModified;
+        this.version = version;
+        
+        // Convert the Enum to String right here
+        this.myPermission = (levelEnum != null) ? levelEnum.name() : null; 
+    }
 
     // Getters & setters
     public Long getDocumentId() { return documentId; }

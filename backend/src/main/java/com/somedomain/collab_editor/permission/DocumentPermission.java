@@ -25,8 +25,8 @@ public class DocumentPermission {
     private User user;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private PermissionLevel level = PermissionLevel.VIEWER;
+    @Column(nullable = false) 
+    private PermissionLevel level;
 
     @Column(nullable = false)
     private Instant grantedAt = Instant.now();

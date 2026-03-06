@@ -52,7 +52,6 @@ public class DocumentService {
         doc.setCreatedAt(Instant.now());
         doc.setLastModified(Instant.now());
         doc.setVersion(0);
-        // doc owner does not need a permission entry in DocumentPermission
         // ownership is determined by doc.owner. owner has all permissions implicitly.
         Document saved = documentRepository.save(doc);
 
