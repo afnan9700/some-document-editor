@@ -10,8 +10,11 @@ export class AuthService {
   private api = inject(ApiService);
   // in-memory access token (not persisted to localStorage by default)
   private accessToken = signal<string | null>(null);
+
   // expose computed auth state
   readonly isAuthenticated = computed(() => !!this.accessToken());
+  // readonly isAuthenticated = computed(() => { console.log('Evaluating isAuthenticated:', !!this.accessToken()); return !!this.accessToken(); });
+
   // small BehaviorSubject for user info
   private meSubject = new BehaviorSubject<MeResponse | null>(null);
   readonly me$ = this.meSubject.asObservable();
