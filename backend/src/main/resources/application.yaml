@@ -2,8 +2,9 @@ spring:
   application:
     name: collab-editor
   datasource:
-    url: jdbc:postgresql://aws-1-ap-south-1.pooler.supabase.com:6543/postgres?user=postgres.ncsdegcxcjwpoqxeknxg
-    password: ${SUPABASE_POSTGRES_PASSWORD}
+    url: jdbc:postgresql://localhost:5432/postgres
+    password: tiger
+    username: postgres
   jpa:
     hibernate:
       ddl-auto: update

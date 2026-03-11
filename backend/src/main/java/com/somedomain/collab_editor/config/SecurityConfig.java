@@ -15,15 +15,18 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.somedomain.collab_editor.auth.JwtAuthFilter;
+import com.somedomain.collab_editor.auth.JwtAuthenticationEntryPoint;
 
 @Configuration
 public class SecurityConfig {
 
+    private final JwtAuthenticationEntryPoint unauthorizedHandler;
     private final JwtAuthFilter jwtAuthFilter;
     // private final CustomUserDetailsService customUserDetailsService;
     // private final PasswordEncoder passwordEncoder;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+    public SecurityConfig(JwtAuthenticationEntryPoint unauthorizedHandler, JwtAuthFilter jwtAuthFilter) {
+        this.unauthorizedHandler = unauthorizedHandler;
         this.jwtAuthFilter = jwtAuthFilter;
     }
 
@@ -33,6 +36,7 @@ public class SecurityConfig {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
+            .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedHandler))
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()

@@ -1,6 +1,5 @@
 // src/app/app.routes.ts
 import { Routes } from '@angular/router';
-import { authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
   {
@@ -8,8 +7,6 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/main-layout.component').then(m => m.MainLayoutComponent),
     // loadComponent: () => import('./layout/main-layout.component').then(m => {console.log('MainLayout loaded'); return m.MainLayoutComponent}),
     
-    // The guard protects all child routes and redirects unauthenticated users to /login
-    canActivate: [authGuard], 
     children: [
       { 
         // If an authenticated user hits the root path, send them to the library
