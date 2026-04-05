@@ -1,0 +1,370 @@
+// markdown-editor.component.ts
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { basicSetup } from 'codemirror';
+import { Compartment, EditorState, type Extension, type TransactionSpec } from '@codemirror/state';
+import { EditorView, type ViewUpdate } from '@codemirror/view';
+import { history, redo, undo } from '@codemirror/commands';
+import { markdown } from '@codemirror/lang-markdown';
+
+import { MarkdownPreviewComponent } from './markdown-preview.component';
+import { MarkdownToolbarComponent } from './markdown-toolbar.component';
+import {
+  MarkdownEditorMode,
+  MarkdownEditorTheme,
+  MarkdownToolbarAction,
+  MarkdownToolbarContext,
+} from './markdown-editor.types';
+import { MarkdownRendererService } from './markdown-renderer.service';
+import { createMarkdownToolbarActions } from './markdown-toolbar.actions';
+
+@Component({
+  selector: 'app-markdown-editor',
+  imports: [MarkdownPreviewComponent, MarkdownToolbarComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    class: 'block h-full min-h-0 w-full',
+  },
+  template: `
+    <div class="card h-full min-h-0 border border-base-300 bg-base-100 shadow-sm">
+      <div class="card-body flex h-full min-h-0 flex-col gap-4 p-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="tabs tabs-box" role="tablist" aria-label="Editor mode">
+            <button
+              type="button"
+              role="tab"
+              class="tab"
+              [class.tab-active]="activeMode() === 'source'"
+              [attr.aria-selected]="activeMode() === 'source'"
+              [attr.aria-controls]="editorPanelId"
+              (click)="setMode('source')"
+            >
+              Source
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              class="tab"
+              [class.tab-active]="activeMode() === 'preview'"
+              [attr.aria-selected]="activeMode() === 'preview'"
+              [attr.aria-controls]="previewPanelId"
+              (click)="setMode('preview')"
+            >
+              Preview
+            </button>
+          </div>
+
+          <app-markdown-toolbar
+            [actions]="toolbarActions()"
+            [context]="toolbarContext()"
+          />
+        </div>
+
+        <div class="flex min-h-0 flex-1 overflow-hidden rounded-box border border-base-300 bg-base-200">
+          <div
+            #editorHost
+            class="h-full min-h-0 w-full"
+            [id]="editorPanelId"
+            [style.display]="activeMode() === 'source' ? 'block' : 'none'"
+          ></div>
+
+          @if (activeMode() === 'preview') {
+            <section
+              [id]="previewPanelId"
+              class="h-full min-h-0 w-full"
+              aria-label="Markdown preview"
+            >
+              <app-markdown-preview [html]="previewHtml()" />
+            </section>
+          }
+        </div>
+      </div>
+    </div>
+  `,
+})
+export class MarkdownEditorComponent implements AfterViewInit {
+  readonly content = input('');
+  readonly readonly = input(false);
+  readonly mode = input<MarkdownEditorMode>('source');
+  readonly theme = input<MarkdownEditorTheme>({ extensions: [] });
+  readonly extraExtensions = input<Extension[]>([]);
+  readonly toolbarActions = input<MarkdownToolbarAction[]>(createMarkdownToolbarActions());
+  readonly ariaLabel = input('Markdown editor');
+
+  readonly toolbarContext = computed<MarkdownToolbarContext>(() => ({
+    getContent: () => this.getContent(),
+    setContent: (value: string) => this.setContent(value),
+    focus: () => this.focus(),
+    toggleMode: () => this.toggleMode(),
+    replaceSelection: (text: string) => this.replaceSelection(text),
+    insertCodeBlock: (language?: string) => this.insertCodeBlock(language),
+    dispatch: (spec: TransactionSpec) => this.dispatch(spec),
+    readonly: this.isReadOnly(),
+    mode: this.activeMode(),
+  }));
+
+  readonly contentChange = output<string>();
+  readonly modeChange = output<MarkdownEditorMode>();
+
+  readonly activeMode = signal<MarkdownEditorMode>('source');
+  readonly doc = signal('');
+  // readonly previewHtml = computed(() => this.renderer.render(this.doc()));
+  readonly previewHtml = computed(() => { console.log(this.renderer.render(this.doc())); return this.renderer.render(this.doc());});
+
+  readonly editorPanelId = `markdown-editor-panel-${++editorInstanceCounter}`;
+  readonly previewPanelId = `markdown-preview-panel-${editorInstanceCounter}`;
+
+  private readonly renderer = inject(MarkdownRendererService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly editorHost = viewChild.required<ElementRef<HTMLDivElement>>('editorHost');
+  private readonly view = signal<EditorView | null>(null);
+
+  private readonly themeCompartment = new Compartment();
+  private readonly interactionCompartment = new Compartment();
+  private readonly extrasCompartment = new Compartment();
+  private readonly ariaCompartment = new Compartment();
+
+  constructor() {
+    effect(() => {
+      this.activeMode.set(this.mode());
+    });
+
+    effect(() => {
+      const next = this.content();
+      this.doc.set(next);
+
+      const view = this.view();
+      if (!view) {
+        return;
+      }
+
+      const current = view.state.doc.toString();
+      if (current === next) {
+        return;
+      }
+
+      view.dispatch({
+        changes: { from: 0, to: current.length, insert: next },
+      });
+    });
+
+    effect(() => {
+      const view = this.view();
+      if (!view) {
+        return;
+      }
+
+      const readOnly = this.isReadOnly();
+      view.dispatch({
+        effects: this.interactionCompartment.reconfigure([
+          EditorState.readOnly.of(readOnly),
+          EditorView.editable.of(!readOnly),
+        ]),
+      });
+    });
+
+    effect(() => {
+      const view = this.view();
+      if (!view) {
+        return;
+      }
+
+      view.dispatch({
+        effects: this.themeCompartment.reconfigure(this.theme().extensions),
+      });
+    });
+
+    effect(() => {
+      const view = this.view();
+      if (!view) {
+        return;
+      }
+
+      view.dispatch({
+        effects: this.extrasCompartment.reconfigure(this.extraExtensions()),
+      });
+    });
+
+    effect(() => {
+      const view = this.view();
+      if (!view) {
+        return;
+      }
+
+      view.dispatch({
+        effects: this.ariaCompartment.reconfigure(
+          EditorView.contentAttributes.of({
+            'aria-label': this.ariaLabel(),
+          }),
+        ),
+      });
+    });
+
+    this.destroyRef.onDestroy(() => {
+      this.view()?.destroy();
+      this.view.set(null);
+    });
+  }
+
+  ngAfterViewInit(): void {
+    const state = EditorState.create({
+      doc: this.content(),
+      extensions: [
+        basicSetup,
+        history(),
+        markdown(),
+
+        this.interactionCompartment.of([
+          EditorState.readOnly.of(this.isReadOnly()),
+          EditorView.editable.of(!this.isReadOnly()),
+        ]),
+        this.themeCompartment.of(this.theme().extensions),
+        this.extrasCompartment.of(this.extraExtensions()),
+        this.ariaCompartment.of(
+          EditorView.contentAttributes.of({
+            'aria-label': this.ariaLabel(),
+          }),
+        ),
+
+        EditorView.updateListener.of((update: ViewUpdate) => {
+          if (!update.docChanged) {
+            return;
+          }
+
+          const value = update.state.doc.toString();
+          this.doc.set(value);
+          this.contentChange.emit(value);
+        }),
+
+        EditorView.theme({
+          '&': {
+            width: '100%',
+            height: '100%',
+          },
+          '.cm-editor': {
+            height: '100%',
+            backgroundColor: 'transparent',
+          },
+          '.cm-scroller': {
+            fontFamily:
+              'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+          },
+          '.cm-focused': {
+            outline: 'none',
+          },
+        }),
+      ],
+    });
+
+    const view = new EditorView({
+      state,
+      parent: this.editorHost().nativeElement,
+    });
+
+    this.view.set(view);
+  }
+
+  setMode(next: MarkdownEditorMode): void {
+    if (this.activeMode() === next) {
+      return;
+    }
+
+    this.activeMode.set(next);
+    this.modeChange.emit(next);
+  }
+
+  toggleMode(): void {
+    this.setMode(this.activeMode() === 'source' ? 'preview' : 'source');
+  }
+
+  getContent(): string {
+    return this.view()?.state.doc.toString() ?? this.doc();
+  }
+
+  setContent(value: string): void {
+    this.doc.set(value);
+    this.contentChange.emit(value);
+
+    const view = this.view();
+    if (!view) {
+      return;
+    }
+
+    const current = view.state.doc.toString();
+    if (current === value) {
+      return;
+    }
+
+    view.dispatch({
+      changes: { from: 0, to: current.length, insert: value },
+    });
+  }
+
+  focus(): void {
+    this.view()?.focus();
+  }
+
+  replaceSelection(text: string): void {
+    const view = this.view();
+    if (!view) {
+      return;
+    }
+
+    const selection = view.state.selection.main;
+    view.dispatch({
+      changes: {
+        from: selection.from,
+        to: selection.to,
+        insert: text,
+      },
+      selection: { anchor: selection.from + text.length },
+    });
+  }
+
+  insertCodeBlock(language = ''): void {
+    const view = this.view();
+    if (!view) {
+      return;
+    }
+
+    const selection = view.state.selection.main;
+    const selectedText = view.state.sliceDoc(selection.from, selection.to);
+
+    const opener = language ? `\`\`\`${language}\n` : '```\n';
+    const insert = `${opener}${selectedText}\n\`\`\``;
+
+    view.dispatch({
+      changes: {
+        from: selection.from,
+        to: selection.to,
+        insert,
+      },
+      selection: {
+        anchor: selection.from + opener.length,
+      },
+    });
+  }
+
+  dispatch(spec: TransactionSpec): void {
+    this.view()?.dispatch(spec);
+  }
+
+  private isReadOnly(): boolean {
+    return this.readonly() || this.activeMode() === 'preview';
+  }
+}
+
+let editorInstanceCounter = 0;

@@ -28,8 +28,10 @@ export const routes: Routes = [
   },
   { 
     // unauthenticated users will only have access to the auth layout and its child routes
+    // path: '',
+    // loadComponent: () => import('./layout/auth-layout.component').then(m => m.AuthLayoutComponent),
     path: '',
-    loadComponent: () => import('./layout/auth-layout.component').then(m => m.AuthLayoutComponent),
+    loadComponent: () => import('./layout/main-layout.component').then(m => m.MainLayoutComponent),
     // loadComponent: () => import('./layout/auth-layout.component').then(m => {console.log('AuthLayout loaded'); return m.AuthLayoutComponent}),
     children: [
       { 
@@ -38,7 +40,8 @@ export const routes: Routes = [
       },
       { 
         path: 'signup', 
-        loadComponent: () => import('./auth/signup.component').then(m => m.SignupComponent) 
+        // loadComponent: () => import('./auth/signup.component').then(m => m.SignupComponent) 
+        loadComponent: () => import('./markdown-editor/md-page.component').then(m => m.DocumentEditorPageComponent) 
       }
     ]
   },
