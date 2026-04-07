@@ -4,7 +4,7 @@ import {
   Component,
   input,
 } from '@angular/core';
-import { MarkdownToolbarAction, MarkdownToolbarContext } from './markdown-editor.types';
+import { MarkdownToolbarAction, MarkdownToolbarContext } from '../markdown-editor.types';
 
 @Component({
   selector: 'app-markdown-toolbar',

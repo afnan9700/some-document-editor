@@ -13,22 +13,23 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+
 import { basicSetup } from 'codemirror';
 import { Compartment, EditorState, type Extension, type TransactionSpec } from '@codemirror/state';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
 import { history, redo, undo } from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
 
-import { MarkdownPreviewComponent } from './markdown-preview.component';
-import { MarkdownToolbarComponent } from './markdown-toolbar.component';
 import {
   MarkdownEditorMode,
   MarkdownEditorTheme,
   MarkdownToolbarAction,
   MarkdownToolbarContext,
 } from './markdown-editor.types';
-import { MarkdownRendererService } from './markdown-renderer.service';
-import { createMarkdownToolbarActions } from './markdown-toolbar.actions';
+import { MarkdownPreviewComponent } from './markdown-renderer/markdown-preview.component';
+import { MarkdownToolbarComponent } from './markdown-editor-toolbar/markdown-toolbar.component';
+import { MarkdownRendererService } from './markdown-renderer/markdown-renderer.service';
+import { createMarkdownToolbarActions } from './markdown-editor-toolbar/markdown-toolbar.actions';
 
 @Component({
   selector: 'app-markdown-editor',
@@ -77,16 +78,11 @@ import { createMarkdownToolbarActions } from './markdown-toolbar.actions';
           <div
             #editorHost
             class="h-full min-h-0 w-full"
-            [id]="editorPanelId"
             [style.display]="activeMode() === 'source' ? 'block' : 'none'"
           ></div>
 
           @if (activeMode() === 'preview') {
-            <section
-              [id]="previewPanelId"
-              class="h-full min-h-0 w-full"
-              aria-label="Markdown preview"
-            >
+            <section class="h-full min-h-0 w-full overflow-auto" aria-label="Markdown preview">
               <app-markdown-preview [html]="previewHtml()" />
             </section>
           }
@@ -121,8 +117,7 @@ export class MarkdownEditorComponent implements AfterViewInit {
 
   readonly activeMode = signal<MarkdownEditorMode>('source');
   readonly doc = signal('');
-  // readonly previewHtml = computed(() => this.renderer.render(this.doc()));
-  readonly previewHtml = computed(() => { console.log(this.renderer.render(this.doc())); return this.renderer.render(this.doc());});
+  readonly previewHtml = computed(() => this.renderer.render(this.doc()));
 
   readonly editorPanelId = `markdown-editor-panel-${++editorInstanceCounter}`;
   readonly previewPanelId = `markdown-preview-panel-${editorInstanceCounter}`;
@@ -138,13 +133,15 @@ export class MarkdownEditorComponent implements AfterViewInit {
   private readonly ariaCompartment = new Compartment();
 
   constructor() {
+    // mode change effect
     effect(() => {
       this.activeMode.set(this.mode());
     });
 
+    // content change effect
     effect(() => {
       const next = this.content();
-      this.doc.set(next);
+      this.doc.set(next);  // update doc signal
 
       const view = this.view();
       if (!view) {
@@ -158,9 +155,10 @@ export class MarkdownEditorComponent implements AfterViewInit {
 
       view.dispatch({
         changes: { from: 0, to: current.length, insert: next },
-      });
+      });  // update codemirror internal state
     });
-
+    
+    // view readonly change effect
     effect(() => {
       const view = this.view();
       if (!view) {
@@ -176,6 +174,7 @@ export class MarkdownEditorComponent implements AfterViewInit {
       });
     });
 
+    // view theme change effect
     effect(() => {
       const view = this.view();
       if (!view) {
@@ -187,6 +186,7 @@ export class MarkdownEditorComponent implements AfterViewInit {
       });
     });
 
+    // view extra extensions change effect
     effect(() => {
       const view = this.view();
       if (!view) {
@@ -198,6 +198,7 @@ export class MarkdownEditorComponent implements AfterViewInit {
       });
     });
 
+    // view aria label change effect
     effect(() => {
       const view = this.view();
       if (!view) {
@@ -213,9 +214,10 @@ export class MarkdownEditorComponent implements AfterViewInit {
       });
     });
 
+    // on destroy cleanup codemirror view
     this.destroyRef.onDestroy(() => {
-      this.view()?.destroy();
-      this.view.set(null);
+      this.view()?.destroy();  // destroy codemirror view
+      this.view.set(null);  // clear view signal
     });
   }
 
@@ -224,12 +226,13 @@ export class MarkdownEditorComponent implements AfterViewInit {
       doc: this.content(),
       extensions: [
         basicSetup,
-        history(),
-        markdown(),
+        history(),  // history for undo/redo
+        markdown(),  // markdown support
+
 
         this.interactionCompartment.of([
-          EditorState.readOnly.of(this.isReadOnly()),
-          EditorView.editable.of(!this.isReadOnly()),
+          EditorState.readOnly.of(this.isReadOnly()),  // for any extensions that implement editing functionality
+          EditorView.editable.of(!this.isReadOnly()),  // for editor content dom
         ]),
         this.themeCompartment.of(this.theme().extensions),
         this.extrasCompartment.of(this.extraExtensions()),
@@ -239,6 +242,7 @@ export class MarkdownEditorComponent implements AfterViewInit {
           }),
         ),
 
+        // update doc signal and emit content change event upon codemirror view updates
         EditorView.updateListener.of((update: ViewUpdate) => {
           if (!update.docChanged) {
             return;
@@ -269,12 +273,25 @@ export class MarkdownEditorComponent implements AfterViewInit {
       ],
     });
 
+    // initializing codemirror editor
     const view = new EditorView({
       state,
       parent: this.editorHost().nativeElement,
     });
 
     this.view.set(view);
+  }
+
+  dispatch(spec: TransactionSpec): void {
+    this.view()?.dispatch(spec);
+  }
+
+  private isReadOnly(): boolean {
+    return this.readonly() || this.activeMode() === 'preview';
+  }
+
+  focus(): void {
+    this.view()?.focus();
   }
 
   setMode(next: MarkdownEditorMode): void {
@@ -286,6 +303,7 @@ export class MarkdownEditorComponent implements AfterViewInit {
     this.modeChange.emit(next);
   }
 
+  // source/preview mode toggle
   toggleMode(): void {
     this.setMode(this.activeMode() === 'source' ? 'preview' : 'source');
   }
@@ -294,6 +312,7 @@ export class MarkdownEditorComponent implements AfterViewInit {
     return this.view()?.state.doc.toString() ?? this.doc();
   }
 
+  // change editor content from outside
   setContent(value: string): void {
     this.doc.set(value);
     this.contentChange.emit(value);
@@ -313,10 +332,7 @@ export class MarkdownEditorComponent implements AfterViewInit {
     });
   }
 
-  focus(): void {
-    this.view()?.focus();
-  }
-
+  // change selected text from outside
   replaceSelection(text: string): void {
     const view = this.view();
     if (!view) {
@@ -357,14 +373,7 @@ export class MarkdownEditorComponent implements AfterViewInit {
       },
     });
   }
-
-  dispatch(spec: TransactionSpec): void {
-    this.view()?.dispatch(spec);
-  }
-
-  private isReadOnly(): boolean {
-    return this.readonly() || this.activeMode() === 'preview';
-  }
+  
 }
 
 let editorInstanceCounter = 0;

@@ -5,11 +5,11 @@ import {
   input,
   output,
 } from '@angular/core';
-import { MarkdownEditorComponent } from './markdown-editor.component';
-import { MarkdownEditorMode, MarkdownEditorTheme, MarkdownToolbarAction } from './markdown-editor.types';
+import { MarkdownEditorComponent } from '../markdown-editor/markdown-editor.component';
+import { MarkdownEditorMode, MarkdownEditorTheme, MarkdownToolbarAction } from '../markdown-editor/markdown-editor.types';
 
 @Component({
-  selector: 'app-markdown-editor-page',
+  selector: 'app-document-editor-workspace',
   imports: [MarkdownEditorComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -42,7 +42,7 @@ import { MarkdownEditorMode, MarkdownEditorTheme, MarkdownToolbarAction } from '
     </div>
   `,
 })
-export class MarkdownEditorPageComponent {
+export class DocumentEditorWorkspaceComponent {
   readonly content = input('');
   readonly readonly = input(false);
   readonly mode = input<MarkdownEditorMode>('source');

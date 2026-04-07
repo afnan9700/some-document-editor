@@ -41,7 +41,7 @@ export const routes: Routes = [
       { 
         path: 'signup', 
         // loadComponent: () => import('./auth/signup.component').then(m => m.SignupComponent) 
-        loadComponent: () => import('./markdown-editor/md-page.component').then(m => m.DocumentEditorPageComponent) 
+        loadComponent: () => import('./document-workspace/document-editor-page.component').then(m => m.DocumentEditorPageComponent) 
       }
     ]
   },

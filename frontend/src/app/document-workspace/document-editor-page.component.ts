@@ -1,15 +1,15 @@
 import { Component, signal } from '@angular/core';
 import { EditorView } from '@codemirror/view';
 
-import { MarkdownEditorPageComponent } from './markdown-editor-page.component';
-import { createMarkdownToolbarActions } from './markdown-toolbar.actions';
-import { MarkdownEditorMode } from './markdown-editor.types';
+import { DocumentEditorWorkspaceComponent } from './document-editor-workspace.component';
+import { createMarkdownToolbarActions } from '../markdown-editor/markdown-editor-toolbar/markdown-toolbar.actions';
+import { MarkdownEditorMode } from '../markdown-editor/markdown-editor.types';
 
 @Component({
-  selector: 'app-document-editor-page',
-  imports: [MarkdownEditorPageComponent],
+  selector: 'document-editor-page',
+  imports: [DocumentEditorWorkspaceComponent],
   template: `
-    <app-markdown-editor-page
+    <app-document-editor-workspace
       [content]="doc()"
       [mode]="mode()"
       [readonly]="isReadonly()"
@@ -25,11 +25,11 @@ import { MarkdownEditorMode } from './markdown-editor.types';
           <p class="text-sm opacity-70">Drop your assistant UI here later.</p>
         </div>
       </div>
-    </app-markdown-editor-page>
+    </app-document-editor-workspace>
   `,
 })
 export class DocumentEditorPageComponent {
-  readonly doc = signal('# Hello\n\nWrite **markdown** here.');
+  readonly doc = signal('# Hello\n\nWrite **markdown** here.\n\n![[https://picsum.photos/id/1/100/100|alt text|0.5]]');
   readonly mode = signal<MarkdownEditorMode>('source');
   readonly isReadonly = signal(false);
 

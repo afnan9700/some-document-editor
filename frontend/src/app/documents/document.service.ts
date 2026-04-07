@@ -34,7 +34,6 @@ export class DocumentService {
     );
   }
   
-
   createDocument(payload: CreateDocRequest): Observable<DocumentSummary> {
     return this.api.post<DocumentSummary>('/api/docs/', payload).pipe(
       tap((newDoc) => {
