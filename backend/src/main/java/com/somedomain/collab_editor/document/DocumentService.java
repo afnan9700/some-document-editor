@@ -32,15 +32,15 @@ public class DocumentService {
     private final InviteRepository inviteRepository;
 
     public DocumentService(DocumentRepository documentRepository,
-                           DocumentPermissionRepository permissionRepository,
-                           DocumentLockRepository lockRepository,
-                           AccessRequestRepository accessRequestRepository,
-                           InviteRepository inviteRepository) {
+            DocumentPermissionRepository permissionRepository,
+            DocumentLockRepository lockRepository,
+            AccessRequestRepository accessRequestRepository,
+            InviteRepository inviteRepository) {
         this.documentRepository = documentRepository;
         this.permissionRepository = permissionRepository;
         this.lockRepository = lockRepository;
         this.accessRequestRepository = accessRequestRepository;
-        this.inviteRepository = inviteRepository;                   
+        this.inviteRepository = inviteRepository;
     }
 
     /** Create a new document owned by user */
@@ -70,12 +70,12 @@ public class DocumentService {
     // docs where user has a permission entry
     public List<Document> listShared(User user) {
         return permissionRepository.findByUser(user).stream()
-                 .map(DocumentPermission::getDocument).toList();
+                .map(DocumentPermission::getDocument).toList();
     }
 
     public Document getById(Long docId) {
-        return documentRepository.findById(docId)
-            .orElseThrow(() -> new NotFoundException("Document not found"));
+        return documentRepository.findByIdWithContent(docId)
+                .orElseThrow(() -> new NotFoundException("Document not found"));
     }
 
     /**
@@ -132,7 +132,6 @@ public class DocumentService {
         log.info("Document {} deleted by owner {}", docId, user.getUsername());
     }
 
-    
     /**
      * Return list of accessible docs (owned + shared)
      */
@@ -141,5 +140,10 @@ public class DocumentService {
         return permissionRepository.findPermittedDocuments(currentUser.getId());
     }
 
-}
+    @Transactional(readOnly = true)
+    public DocumentSummaryWithContentDto getDocumentSummaryWithContentByDocumentAndUser(Long documentId,
+            Long userId) {
+        return permissionRepository.getDocumentSummaryWithContentByDocumentAndUser(documentId, userId);
+    }
 
+}

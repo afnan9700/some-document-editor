@@ -1,9 +1,9 @@
 // src/app/documents/document.service.ts
 import { inject, Injectable, signal, computed } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { catchError, tap, switchMap } from 'rxjs/operators';
 import { ApiService } from '../core/api.service';
-import type { DocumentSummary, CreateDocRequest } from './document.models';
+import type { DocumentSummary, CreateDocRequest, DocumentSaveResponse, Document } from './document.models';
 
 @Injectable({ providedIn: 'root' })
 export class DocumentService {
@@ -19,6 +19,8 @@ export class DocumentService {
   readonly ownedDocuments = computed(() => 
     this.documentsState().filter(doc => doc.myPermission === 'OWNER')
   );
+
+  readonly defaultLockTtlSeconds = 300;
 
   // fetch the user's document library from the backend and update internal state signal  
   loadLibrary(): Observable<DocumentSummary[]> {
@@ -47,4 +49,48 @@ export class DocumentService {
       })
     );
   }
+
+  getDocument(documentId: number): Observable<Document> {
+    return this.api.get<Document>(`/api/docs/${documentId}`);
+  }
+
+  lockDocument(
+    documentId: number, 
+    ttlSeconds: number = this.defaultLockTtlSeconds
+  ): Observable<void> {
+    return this.api.post<void>(
+      `/api/docs/${documentId}/lock`,
+      {},
+      { ttlseconds: String(ttlSeconds) },
+    );
+  }
+
+  refreshLock(
+    documentId: number,
+    ttlSeconds: number = this.defaultLockTtlSeconds,
+  ): Observable<void> {
+    return this.api.post<void>(
+      `/api/docs/${documentId}/lock/refresh`,
+      {},
+      { ttlseconds: String(ttlSeconds) },
+    );
+  }
+
+  openDocument(
+    documentId: number,
+    ttlSeconds: number = this.defaultLockTtlSeconds,
+  ): Observable<Document> {
+    return this.lockDocument(documentId, ttlSeconds).pipe(
+      switchMap(() => this.getDocument(documentId)),
+    );
+  }
+
+  unlockDocument(documentId: number): Observable<void> {
+    return this.api.post<void>(`/api/docs/${documentId}/unlock`, {});
+  }
+
+  saveDocument(documentId: number, content: string): Observable<DocumentSaveResponse> {
+    return this.api.put<DocumentSaveResponse>(`/api/docs/${documentId}`, { content });
+  }
+
 }

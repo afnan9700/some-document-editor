@@ -26,15 +26,15 @@ export class AuthService {
 
   // login: sends credentials; backend returns access token and sets refresh cookie
   login(payload: LoginRequest): Observable<MeResponse> {
-  return this.api.post<AuthResponse>('/auth/login', payload).pipe(
-    tap(res => {
-      this.accessToken.set(res.accessToken);
-      console.log('Login successful, access token set');
-    }),
-    switchMap(() => this.loadMe()), // swtichMap automatically subscribes and unscribes to the observable
-    catchError(err => throwError(() => err))
-  );
-}
+    return this.api.post<AuthResponse>('/auth/login', payload).pipe(
+      tap(res => {
+        this.accessToken.set(res.accessToken);
+        console.log('Login successful, access token set');
+      }),
+      switchMap(() => this.loadMe()), // swtichMap automatically subscribes and unscribes to the observable
+      catchError(err => throwError(() => err))
+    );
+  }
 
   // signup behaves like login: backend issues accessToken & sets refresh cookie
   signup(payload: SignupRequest): Observable<MeResponse> {

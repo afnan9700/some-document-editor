@@ -27,9 +27,9 @@ import {
   MarkdownToolbarContext,
 } from './markdown-editor.types';
 import { MarkdownPreviewComponent } from './markdown-renderer/markdown-preview.component';
-import { MarkdownToolbarComponent } from './markdown-editor-toolbar/markdown-toolbar.component';
+import { MarkdownToolbarComponent } from './markdown-editor-toolbar/markdown-editor-toolbar.component';
 import { MarkdownRendererService } from './markdown-renderer/markdown-renderer.service';
-import { createMarkdownToolbarActions } from './markdown-editor-toolbar/markdown-toolbar.actions';
+import { createMarkdownToolbarActions } from './markdown-editor-toolbar/markdown-editor-toolbar.actions';
 
 @Component({
   selector: 'app-markdown-editor',

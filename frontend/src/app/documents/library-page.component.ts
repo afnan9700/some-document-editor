@@ -183,7 +183,7 @@ export class LibraryPageComponent implements OnInit {
   // --- Card Action Handlers ---
 
   handleOpenDocument(id: string): void {
-    // this.router.navigate(['/editor', id]);
+    this.router.navigate(['/documents', id]);
   }
 
   handleShareDocument(id: string): void {

@@ -19,19 +19,19 @@ export const routes: Routes = [
         loadComponent: () => import('./documents/library-page.component').then(m => m.LibraryPageComponent) 
         // loadComponent: () => import('./documents/library-page.component').then(m => {console.log('LibraryPage loaded'); return m.LibraryPageComponent})
       },
-      // { 
-      //   // The :id parameter will be extracted by the EditorPageComponent
-      //   path: 'editor/:id', 
-      //   loadComponent: () => import('./documents/editor-page.component').then(m => m.EditorPageComponent) 
-      // },
+      {
+        path: 'documents/:id',
+        loadComponent: () =>
+          import('./document-workspace/document-workspace-page.component').then(
+            (m) => m.DocumentWorkspacePageComponent,
+          ),
+      },
     ]
   },
   { 
     // unauthenticated users will only have access to the auth layout and its child routes
-    // path: '',
-    // loadComponent: () => import('./layout/auth-layout.component').then(m => m.AuthLayoutComponent),
     path: '',
-    loadComponent: () => import('./layout/main-layout.component').then(m => m.MainLayoutComponent),
+    loadComponent: () => import('./layout/auth-layout.component').then(m => m.AuthLayoutComponent),
     // loadComponent: () => import('./layout/auth-layout.component').then(m => {console.log('AuthLayout loaded'); return m.AuthLayoutComponent}),
     children: [
       { 
@@ -40,8 +40,7 @@ export const routes: Routes = [
       },
       { 
         path: 'signup', 
-        // loadComponent: () => import('./auth/signup.component').then(m => m.SignupComponent) 
-        loadComponent: () => import('./document-workspace/document-editor-page.component').then(m => m.DocumentEditorPageComponent) 
+        loadComponent: () => import('./auth/signup.component').then(m => m.SignupComponent) 
       }
     ]
   },

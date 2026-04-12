@@ -28,13 +28,15 @@ public class DocumentController {
     private final LockService lockService;
 
     public record DocumentResponseDto(Long documentId,
-                                      String title,
-                                      Long ownerId,
-                                      String ownerUsername,
-                                      Instant lastModified,
-                                      Integer version) {}
+            String title,
+            Long ownerId,
+            String ownerUsername,
+            Instant lastModified,
+            Integer version) {
+    }
 
-    public record CreateDocReq(String title, String content) {}
+    public record CreateDocReq(String title, String content) {
+    }
 
     public DocumentController(DocumentService documentService, LockService lockService) {
         this.documentService = documentService;
@@ -44,7 +46,7 @@ public class DocumentController {
     private DocumentResponseDto toDto(Document doc) {
         // owner is guaranteed non-null since a document always has an owner
         return new DocumentResponseDto(
-                doc.getId(),               // -> documentId
+                doc.getId(), // -> documentId
                 doc.getTitle(),
                 doc.getOwner().getId(),
                 doc.getOwner().getUsername(),
@@ -52,7 +54,7 @@ public class DocumentController {
                 doc.getVersion());
     }
 
-    @PostMapping({"", "/"})
+    @PostMapping({ "", "/" })
     public ResponseEntity<?> create(@RequestBody CreateDocReq req) {
         User user = SecurityUtils.getCurrentUser();
         var doc = documentService.create(user, req.title(), req.content());
@@ -60,23 +62,23 @@ public class DocumentController {
         return ResponseEntity.ok(dto);
     }
 
-    @GetMapping({"", "/"})
+    @GetMapping({ "", "/" })
     public ResponseEntity<?> library() {
         User user = SecurityUtils.getCurrentUser();
         List<DocumentSummaryDto> list = documentService.listAccessibleDocumentsWithPermissionLevel(user);
         return ResponseEntity.ok(list);
     }
 
-
     @GetMapping("/{id}")
     public ResponseEntity<?> read(@PathVariable Long id) {
         // Reads should be allowed even if locked by someone else
-        var doc = documentService.getById(id);
+        var doc = documentService.getDocumentSummaryWithContentByDocumentAndUser(id,
+                SecurityUtils.getCurrentUser().getId());
         return ResponseEntity.ok(doc);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> save(@PathVariable Long id, @RequestBody Map<String,String> body) {
+    public ResponseEntity<?> save(@PathVariable Long id, @RequestBody Map<String, String> body) {
         User user = SecurityUtils.getCurrentUser();
         String content = body.get("content");
         var saved = documentService.saveDocument(id, user, content);
@@ -85,11 +87,12 @@ public class DocumentController {
     }
 
     @PostMapping("/{id}/lock")
-    public ResponseEntity<?> acquireLock(@PathVariable Long id, @RequestParam(required=false) Long ttlSeconds) {
+    public ResponseEntity<?> acquireLock(@PathVariable Long id, @RequestParam(required = false) Long ttlSeconds) {
         User user = SecurityUtils.getCurrentUser();
         var doc = documentService.getById(id);
         var lock = lockService.acquireLock(doc, user, ttlSeconds == null ? null : Duration.ofSeconds(ttlSeconds));
-        return ResponseEntity.ok(lock);
+        // return ResponseEntity.ok(lock);
+        return ResponseEntity.ok(Map.of("status", "locked"));
     }
 
     @PostMapping("/{id}/unlock")
@@ -97,22 +100,23 @@ public class DocumentController {
         User user = SecurityUtils.getCurrentUser();
         var doc = documentService.getById(id);
         lockService.releaseLock(doc, user);
-        return ResponseEntity.ok(Map.of("status","ok"));
+        return ResponseEntity.ok(Map.of("status", "ok"));
     }
 
-    @PostMapping("/api/docs/{id}/lock/refresh")
-    public ResponseEntity<?> refreshLock(@PathVariable Long id, @RequestParam(required=false) Long ttlSeconds) {
+    @PostMapping("/{id}/lock/refresh")
+    public ResponseEntity<?> refreshLock(@PathVariable Long id, @RequestParam(required = false) Long ttlSeconds) {
         User user = SecurityUtils.getCurrentUser();
         Document doc = documentService.getById(id);
         var lock = lockService.refreshLock(doc, user, ttlSeconds == null ? null : Duration.ofSeconds(ttlSeconds));
-        return ResponseEntity.ok(lock);
+        // return ResponseEntity.ok(lock);
+        return ResponseEntity.ok(Map.of("status", "locked"));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         User user = SecurityUtils.getCurrentUser();
         documentService.deleteDocument(id, user);
-        return ResponseEntity.ok(Map.of("status","deleted"));
+        return ResponseEntity.ok(Map.of("status", "deleted"));
     }
-}
 
+}
