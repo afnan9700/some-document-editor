@@ -4,7 +4,7 @@ import { ReactiveFormsModule, NonNullableFormBuilder, Validators } from '@angula
 import { DocumentService } from './document.service';
 import { DocumentCardComponent } from '../ui/document-card.component';
 import { ModalComponent } from '../ui/modal.component'; // Path varies based on your structure
-import type { DocPermission, DocumentSummary } from './document.models';
+import type { DocPermission, DocumentSummary, DocumentLockDto } from './document.models';
 import type { DocStatus } from '../ui/status-badge.component';
 
 @Component({

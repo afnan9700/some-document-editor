@@ -19,7 +19,6 @@ public class LockService {
     private static final Logger log = LoggerFactory.getLogger(LockService.class);
     private final DocumentLockRepository lockRepository;
     private static final Duration DEFAULT_LOCK_TTL = Duration.ofMinutes(5);
-    
 
     public LockService(DocumentLockRepository lockRepository) {
         this.lockRepository = lockRepository;
@@ -27,7 +26,8 @@ public class LockService {
 
     @Transactional
     public DocumentLock acquireLock(Document document, User user, Duration ttl) {
-        if (ttl == null) ttl = DEFAULT_LOCK_TTL;
+        if (ttl == null)
+            ttl = DEFAULT_LOCK_TTL;
 
         Optional<DocumentLock> existing = lockRepository.findByDocument(document);
         if (existing.isPresent()) {
@@ -75,15 +75,16 @@ public class LockService {
         log.info("User {} released lock for document {}", user.getUsername(), document.getId());
     }
 
-    
     /**
      * Refresh the lock expiry for a document for the same user.
-     * If the lock is absent or expired, a new lock is created (if not locked by another).
+     * If the lock is absent or expired, a new lock is created (if not locked by
+     * another).
      * Throws AppException if locked by someone else.
      */
     @Transactional
     public DocumentLock refreshLock(Document document, User user, Duration ttl) {
-        if (ttl == null) ttl = DEFAULT_LOCK_TTL;
+        if (ttl == null)
+            ttl = DEFAULT_LOCK_TTL;
 
         Optional<DocumentLock> existing = lockRepository.findByDocument(document);
         if (existing.isPresent()) {
@@ -115,4 +116,16 @@ public class LockService {
         return saved;
     }
 
+    public Optional<DocumentLockDto> getLock(Document document) {
+        Optional<DocumentLockDto> existing = lockRepository.findDtoByDocument(document.getId());
+        if (existing.isEmpty()) {
+            return Optional.empty();
+        }
+        DocumentLockDto dl = existing.get();
+        if (dl.expiresAt() != null && dl.expiresAt().isBefore(Instant.now())) {
+            lockRepository.deleteByDocument(document);
+            return Optional.empty();
+        }
+        return existing;
+    }
 }

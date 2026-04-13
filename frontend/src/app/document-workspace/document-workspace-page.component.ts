@@ -2,25 +2,26 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  DestroyRef,
   computed,
   effect,
   inject,
   signal,
 } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { firstValueFrom, interval } from 'rxjs';
-import { distinctUntilChanged, map } from 'rxjs/operators';
+import { firstValueFrom, interval, of, throwError } from 'rxjs';
+import { catchError, distinctUntilChanged, map, switchMap, take } from 'rxjs/operators';
+import { HttpErrorResponse } from '@angular/common/http';
 
 import { DocumentWorkspaceComponent } from './document-workspace.component';
+import { ModalComponent } from '../ui/modal.component';
 import { MarkdownEditorMode } from '../markdown-editor/markdown-editor.types';
 import { DocumentService } from '../documents/document.service';
-import { DocPermission } from '../documents/document.models';
+import { DocPermission, DocumentLockDto } from '../documents/document.models';
 
 @Component({
   selector: 'app-document-workspace-page',
-  imports: [DocumentWorkspaceComponent],
+  imports: [DocumentWorkspaceComponent, ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'block h-full min-h-0 w-full',
@@ -35,6 +36,21 @@ import { DocPermission } from '../documents/document.models';
         <span>{{ error() }}</span>
       </div>
     } @else {
+      <app-modal
+        [isOpen]="lockModalOpen()"
+        title="Document locked"
+        (close)="returnToLibrary()"
+      >
+        <p class="py-2">
+          Document is currently being edited by {{ lockedByUsername() ?? 'another user' }}.
+          Proceed in readonly mode or return to library?
+        </p>
+
+        <div modal-actions class="flex gap-2">
+          <button class="btn btn-primary" (click)="openReadonlyMode()">Proceed in readonly mode</button>
+        </div>
+      </app-modal>
+
       <app-document-workspace
         [title]="title()"
         [content]="content()"
@@ -71,6 +87,7 @@ import { DocPermission } from '../documents/document.models';
 })
 export class DocumentWorkspacePageComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly documents = inject(DocumentService);
 
   readonly title = signal('Untitled document');
@@ -86,6 +103,9 @@ export class DocumentWorkspacePageComponent {
   readonly saveError = signal<string | null>(null);
   readonly lockHeld = signal(false);
   readonly activeDocumentId = signal<number | null>(null);
+
+  readonly lockModalOpen = signal(false);
+  readonly lockedByUsername = signal<string | null>(null);
 
   readonly canEdit = computed(
     () => this.permission() === 'OWNER' || this.permission() === 'EDITOR',
@@ -111,7 +131,6 @@ export class DocumentWorkspacePageComponent {
   );
 
   constructor() {
-    // effect to load the document when the route document id changes
     effect((onCleanup) => {
       const documentId = this.routeDocumentId();
 
@@ -125,10 +144,34 @@ export class DocumentWorkspacePageComponent {
       this.error.set(null);
       this.saveError.set(null);
       this.lockHeld.set(false);
+      this.lockModalOpen.set(false);
+      this.lockedByUsername.set(null);
       this.activeDocumentId.set(documentId);
 
-      const sub = this.documents.openDocument(documentId).subscribe({
+      const sub = this.documents.getDocumentLock(documentId).pipe(
+        take(1),
+        catchError((err: unknown) => {
+          if (err instanceof HttpErrorResponse && err.status === 404) {
+            return of(null as DocumentLockDto | null);
+          }
+          return throwError(() => err);
+        }),
+        switchMap((lock) => {
+          if (lock) {
+            this.lockedByUsername.set(lock.lockedByUsername);
+            this.lockModalOpen.set(true);
+            this.loading.set(false);
+            return of(null);
+          }
+
+          return this.documents.openDocument(documentId);
+        }),
+      ).subscribe({
         next: (doc) => {
+          if (!doc) {
+            return;
+          }
+
           this.title.set(doc.title);
           this.content.set(doc.content);
           this.savedContent.set(doc.content);
@@ -145,8 +188,6 @@ export class DocumentWorkspacePageComponent {
         },
       });
 
-      // to call after effect is destroyed
-      // (either before an effect re-run or when the component is destroyed or .destroy())
       onCleanup(() => {
         sub.unsubscribe();
 
@@ -159,7 +200,6 @@ export class DocumentWorkspacePageComponent {
       });
     });
 
-    // periodic lock refresh
     effect((onCleanup) => {
       const documentId = this.activeDocumentId();
       if (documentId === null || !this.lockHeld()) {
@@ -177,7 +217,6 @@ export class DocumentWorkspacePageComponent {
       onCleanup(() => sub.unsubscribe());
     });
 
-    // periodic document save
     effect((onCleanup) => {
       const documentId = this.activeDocumentId();
       if (documentId === null || !this.canEdit()) {
@@ -195,6 +234,21 @@ export class DocumentWorkspacePageComponent {
   handleContentChange(value: string): void {
     this.content.set(value);
     this.saveError.set(null);
+  }
+
+  openReadonlyMode(): void {
+    const documentId = this.activeDocumentId();
+    if (documentId === null) {
+      return;
+    }
+
+    this.lockModalOpen.set(false);
+    this.router.navigate(['/documents', documentId, 'readonly']);
+  }
+
+  returnToLibrary(): void {
+    this.lockModalOpen.set(false);
+    this.router.navigate(['/documents']); // replace with your actual library route if different
   }
 
   async saveDocument(): Promise<void> {

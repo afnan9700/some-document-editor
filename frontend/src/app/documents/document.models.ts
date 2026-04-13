@@ -1,4 +1,4 @@
-// src/app/documents/document.models.ts
+// documents/document.models.ts
 
 // Defining specific string literal types prevents invalid permission strings
 export type DocPermission = 'OWNER' | 'EDITOR' | 'VIEWER';
@@ -37,4 +37,10 @@ export interface DocumentSaveResponse {
   ownerUsername: string;
   lastModified: string;
   version: number;
+}
+
+export interface DocumentLockDto {
+  documentId: number;
+  lockedByUsername: string;
+  expiresAt: string;
 }

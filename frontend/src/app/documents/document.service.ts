@@ -3,7 +3,7 @@ import { inject, Injectable, signal, computed } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap, switchMap } from 'rxjs/operators';
 import { ApiService } from '../core/api.service';
-import type { DocumentSummary, CreateDocRequest, DocumentSaveResponse, Document } from './document.models';
+import type { DocumentSummary, CreateDocRequest, DocumentSaveResponse, Document, DocumentLockDto } from './document.models';
 
 @Injectable({ providedIn: 'root' })
 export class DocumentService {
@@ -87,6 +87,10 @@ export class DocumentService {
 
   unlockDocument(documentId: number): Observable<void> {
     return this.api.post<void>(`/api/docs/${documentId}/unlock`, {});
+  }
+
+  getDocumentLock(documentId: number): Observable<DocumentLockDto> {
+    return this.api.get<DocumentLockDto>(`/api/docs/${documentId}/lock`);
   }
 
   saveDocument(documentId: number, content: string): Observable<DocumentSaveResponse> {

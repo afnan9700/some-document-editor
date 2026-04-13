@@ -26,6 +26,13 @@ export const routes: Routes = [
             (m) => m.DocumentWorkspacePageComponent,
           ),
       },
+      {
+        path: 'documents/:id/readonly',
+        loadComponent: () =>
+          import('./document-workspace/document-workspace-page-readonly.component').then(
+            (m) => m.DocumentWorkspaceReadonlyPageComponent,
+          ),
+      }
     ]
   },
   { 
