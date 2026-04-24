@@ -116,6 +116,7 @@ public class LockService {
         return saved;
     }
 
+    @Transactional
     public Optional<DocumentLockDto> getLock(Document document) {
         Optional<DocumentLockDto> existing = lockRepository.findDtoByDocument(document.getId());
         if (existing.isEmpty()) {
