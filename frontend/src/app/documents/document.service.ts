@@ -97,4 +97,14 @@ export class DocumentService {
     return this.api.put<DocumentSaveResponse>(`/api/docs/${documentId}`, { content });
   }
 
+  deleteDocument(documentId: number): Observable<void> {
+  return this.api.delete<void>(`/api/docs/${documentId}`).pipe(
+    tap(() => {
+      this.documentsState.update((docs) =>
+        docs.filter((doc) => doc.documentId !== documentId),
+      );
+    }),
+  );
+}
+
 }

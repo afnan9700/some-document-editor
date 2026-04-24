@@ -8,7 +8,7 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "document_permissions", uniqueConstraints = {
-    @UniqueConstraint(name = "uc_doc_user", columnNames = {"document_id","user_id"})
+        @UniqueConstraint(name = "uc_doc_user", columnNames = { "document_id", "user_id" })
 })
 public class DocumentPermission {
 
@@ -25,13 +25,14 @@ public class DocumentPermission {
     private User user;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false) 
+    @Column(nullable = false)
     private PermissionLevel level;
 
     @Column(nullable = false)
     private Instant grantedAt = Instant.now();
 
-    public DocumentPermission() {}
+    public DocumentPermission() {
+    }
 
     public DocumentPermission(Document document, User user, PermissionLevel level) {
         this.document = document;
@@ -41,14 +42,39 @@ public class DocumentPermission {
     }
 
     // getters/setters
-    public Long getId() { return id; }
-    public Document getDocument() { return document; }
-    public User getUser() { return user; }
-    public PermissionLevel getLevel() { return level; }
-    public Instant getGrantedAt() { return grantedAt; }
+    public Long getId() {
+        return id;
+    }
 
-    public void setDocument(Document document) { this.document = document; }
-    public void setUser(User user) { this.user = user; }
-    public void setLevel(PermissionLevel level) { this.level = level; }
-    public void setGrantedAt(Instant grantedAt) { this.grantedAt = grantedAt; }
+    public Document getDocument() {
+        return document;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public PermissionLevel getLevel() {
+        return level;
+    }
+
+    public Instant getGrantedAt() {
+        return grantedAt;
+    }
+
+    public void setDocument(Document document) {
+        this.document = document;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public void setLevel(PermissionLevel level) {
+        this.level = level;
+    }
+
+    public void setGrantedAt(Instant grantedAt) {
+        this.grantedAt = grantedAt;
+    }
 }

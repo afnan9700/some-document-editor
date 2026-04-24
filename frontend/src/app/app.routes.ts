@@ -32,7 +32,17 @@ export const routes: Routes = [
           import('./document-workspace/document-workspace-page-readonly.component').then(
             (m) => m.DocumentWorkspaceReadonlyPageComponent,
           ),
-      }
+      },
+      {
+        path: 'requests',
+        loadComponent: () =>
+          import('./document-sharing/requests-page.component').then((m) => m.RequestsPageComponent),
+      },
+      {
+        path: 'invite/:token',
+        loadComponent: () =>
+          import('./document-sharing/invite-landing.component').then((m) => m.InviteLandingComponent),
+      },
     ]
   },
   { 

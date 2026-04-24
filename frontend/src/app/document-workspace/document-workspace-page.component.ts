@@ -13,6 +13,7 @@ import { firstValueFrom, interval, of, throwError } from 'rxjs';
 import { catchError, distinctUntilChanged, map, switchMap, take } from 'rxjs/operators';
 import { HttpErrorResponse } from '@angular/common/http';
 
+import { AuthService } from '../auth/auth.service';
 import { DocumentWorkspaceComponent } from './document-workspace.component';
 import { ModalComponent } from '../ui/modal.component';
 import { MarkdownEditorMode } from '../markdown-editor/markdown-editor.types';
@@ -86,6 +87,7 @@ import { DocPermission, DocumentLockDto } from '../documents/document.models';
   `,
 })
 export class DocumentWorkspacePageComponent {
+  private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly documents = inject(DocumentService);
@@ -149,7 +151,6 @@ export class DocumentWorkspacePageComponent {
       this.activeDocumentId.set(documentId);
 
       const sub = this.documents.getDocumentLock(documentId).pipe(
-        take(1),
         catchError((err: unknown) => {
           if (err instanceof HttpErrorResponse && err.status === 404) {
             return of(null as DocumentLockDto | null);
@@ -157,7 +158,7 @@ export class DocumentWorkspacePageComponent {
           return throwError(() => err);
         }),
         switchMap((lock) => {
-          if (lock) {
+          if (lock && lock.lockedByUsername !== this.auth.currentUser?.username) {
             this.lockedByUsername.set(lock.lockedByUsername);
             this.lockModalOpen.set(true);
             this.loading.set(false);

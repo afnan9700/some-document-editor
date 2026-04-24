@@ -19,6 +19,8 @@ public interface DocumentPermissionRepository extends JpaRepository<DocumentPerm
 
     List<DocumentPermission> findByDocument(Document document);
 
+    void deleteByDocument(Document document);
+
     boolean existsByDocumentAndUser(Document document, User user);
 
     // custom query to fetch permissions with document metadata for a user

@@ -1,43 +1,55 @@
-import { Component, ChangeDetectionStrategy, inject, OnInit, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  inject,
+  OnInit,
+  computed,
+  signal,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { ReactiveFormsModule, NonNullableFormBuilder, Validators } from '@angular/forms';
+import { finalize } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DocumentService } from './document.service';
 import { DocumentCardComponent } from '../ui/document-card.component';
-import { ModalComponent } from '../ui/modal.component'; // Path varies based on your structure
-import type { DocPermission, DocumentSummary, DocumentLockDto } from './document.models';
+import { ModalComponent } from '../ui/modal.component';
+import { InviteLinkModalComponent } from '../document-sharing/invite-link-modal.component';
+import type { DocPermission, DocumentSummary } from './document.models';
 import type { DocStatus } from '../ui/status-badge.component';
 
 @Component({
   selector: 'app-library-page',
-  // standalone: true is natively omitted
-  imports: [DocumentCardComponent, ModalComponent, ReactiveFormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [DocumentCardComponent, ModalComponent, InviteLinkModalComponent, ReactiveFormsModule],
   template: `
-    <div class="flex flex-col h-full">
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+    <div class="flex h-full flex-col">
+      <div class="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 class="text-3xl font-bold tracking-tight">Library</h1>
-          <p class="text-base-content/70 mt-1">Manage and access your documents.</p>
+          <p class="mt-1 text-base-content/70">Manage and access your documents.</p>
         </div>
-        
-        <button 
-          class="btn btn-primary" 
+
+        <button
+          type="button"
+          class="btn btn-primary"
           aria-label="Create a new document"
-          (click)="openCreateModal()">  
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-          New Document
+          (click)="openCreateModal()"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="mr-1 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          New document
         </button>
       </div>
 
       @if (isLoading()) {
-        <div class="flex-1 flex justify-center items-center">
-          <span class="loading loading-spinner loading-lg text-primary" aria-label="Loading documents"></span>
+        <div class="flex flex-1 items-center justify-center">
+          <span class="loading loading-spinner loading-lg" aria-label="Loading documents"></span>
         </div>
-      }
-
-      @if (!isLoading() && docService.documents().length > 0) {
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          @for (doc of docService.documents(); track doc.documentId) {
+      } @else if (documents().length > 0) {
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          @for (doc of documents(); track doc.documentId) {
             <app-document-card
               [id]="doc.documentId.toString()"
               [title]="doc.title"
@@ -50,101 +62,183 @@ import type { DocStatus } from '../ui/status-badge.component';
             />
           }
         </div>
-      }
-
-      @if (!isLoading() && docService.documents().length === 0) {
-        <div class="flex-1 flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-base-300 rounded-box">
-          <div class="w-16 h-16 bg-base-200 rounded-full flex items-center justify-center mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-base-content/50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+      } @else {
+        <div class="flex flex-1 flex-col items-center justify-center rounded-box border-2 border-dashed border-base-300 p-8 text-center">
+          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-base-200">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-base-content/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
           </div>
-          <h2 class="text-xl font-semibold mb-2">No documents yet</h2>
-          <p class="text-base-content/70 max-w-sm mb-6">You haven't created or been invited to any documents. Create your first one to get started.</p>
-          <button class="btn btn-outline" (click)="openCreateModal()">Create Document</button>
+
+          <h2 class="mb-2 text-xl font-semibold">No documents yet</h2>
+          <p class="mb-6 max-w-sm text-base-content/70">
+            You have not created or been invited to any documents yet.
+          </p>
+
+          <button type="button" class="btn btn-outline" (click)="openCreateModal()">
+            Create document
+          </button>
         </div>
       }
     </div>
 
-    <app-modal 
-      [isOpen]="isCreateModalOpen()" 
-      title="Create New Document"
-      (close)="closeCreateModal()">
-      
-      <form [formGroup]="createForm" id="create-doc-form" (ngSubmit)="submitCreateDocument()">
-        <label class="form-control w-full mb-4">
-          <div class="label"><span class="label-text font-medium">Document Title</span></div>
-          <input 
-            type="text" 
+    <app-modal
+      [isOpen]="isCreateModalOpen()"
+      title="Create new document"
+      (close)="closeCreateModal()"
+    >
+      <form id="create-doc-form" [formGroup]="createForm" (ngSubmit)="submitCreateDocument()">
+        <label class="form-control w-full">
+          <div class="label">
+            <span class="label-text font-medium">Document title</span>
+          </div>
+          <input
+            type="text"
             formControlName="title"
-            placeholder="e.g., Project Specifications" 
+            placeholder="e.g. Project specifications"
             class="input input-bordered w-full"
             [class.input-error]="createForm.controls.title.invalid && createForm.controls.title.touched"
             autofocus
           />
+          @if (createForm.controls.title.invalid && createForm.controls.title.touched) {
+            <div class="label">
+              <span class="label-text-alt text-error">
+                Title is required and must be 100 characters or fewer.
+              </span>
+            </div>
+          }
         </label>
       </form>
 
       <div modal-actions class="flex gap-2">
-        <button 
-          type="submit" 
-          form="create-doc-form" 
-          class="btn btn-primary" 
-          [disabled]="createForm.invalid || isCreating()">
+        <button type="button" class="btn btn-ghost" (click)="closeCreateModal()">
+          Cancel
+        </button>
+
+        <button
+          type="submit"
+          form="create-doc-form"
+          class="btn btn-primary"
+          [disabled]="createForm.invalid || isCreating()"
+        >
           @if (isCreating()) {
             <span class="loading loading-spinner loading-sm"></span>
             Creating...
           } @else {
-            Create & Open
+            Create & open
           }
         </button>
       </div>
     </app-modal>
-  `
+
+    <app-modal
+      [isOpen]="isDeleteModalOpen()"
+      title="Delete document"
+      (close)="closeDeleteModal()"
+    >
+      <p class="py-2">
+        Are you sure you want to delete
+        <span class="font-semibold">
+          "{{ selectedDeleteDocumentTitle() }}"
+        </span>
+        ? This action cannot be undone.
+      </p>
+
+      <div modal-actions class="flex gap-2">
+        <button
+          type="button"
+          class="btn btn-ghost"
+          (click)="closeDeleteModal()"
+          [disabled]="isDeleting()"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          class="btn btn-error"
+          (click)="confirmDeleteDocument()"
+          [disabled]="isDeleting() || selectedDeleteDocumentId() === null"
+        >
+          @if (isDeleting()) {
+            <span class="loading loading-spinner loading-sm"></span>
+            Deleting...
+          } @else {
+            Yes, delete
+          }
+        </button>
+      </div>
+    </app-modal>
+
+    <app-invite-link-modal
+      [isOpen]="isShareModalOpen()"
+      [documentId]="selectedShareDocumentId()"
+      [documentTitle]="selectedShareDocumentTitle()"
+      (close)="closeShareModal()"
+    />
+  `,
 })
 export class LibraryPageComponent implements OnInit {
-  // We make docService public here purely so the template can read its signals.
-  public docService = inject(DocumentService);
-  private router = inject(Router);
-  private fb = inject(NonNullableFormBuilder);
+  readonly docService = inject(DocumentService);
+  private readonly router = inject(Router);
+  private readonly fb = inject(NonNullableFormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
 
-  // Local UI State Signals
-  readonly isLoading = signal<boolean>(true);  // Starts as true since we load documents on init
-  readonly isCreateModalOpen = signal<boolean>(false);  // to open and close the create document modal
-  readonly isCreating = signal<boolean>(false);  // loading state for document creation process
+  readonly isLoading = signal(true);
+  readonly isCreateModalOpen = signal(false);
+  readonly isCreating = signal(false);
 
-  // form for new document creation
-  // to be used in the create document modal 
-  readonly createForm = this.fb.group({
-    title: ['', [Validators.required, Validators.maxLength(100)]]
+  readonly isShareModalOpen = signal(false);
+  readonly selectedShareDocumentId = signal<number | null>(null);
+
+  readonly isDeleteModalOpen = signal(false);
+  readonly isDeleting = signal(false);
+  readonly selectedDeleteDocumentId = signal<number | null>(null);
+
+  readonly documents = computed(() => this.docService.documents());
+
+  readonly selectedShareDocumentTitle = computed(() => {
+    const id = this.selectedShareDocumentId();
+    const doc = this.documents().find((item) => item.documentId === id);
+    return doc?.title ?? '';
   });
 
-  // On component initialization, we load the user's document library
+  readonly selectedDeleteDocumentTitle = computed(() => {
+    const id = this.selectedDeleteDocumentId();
+    const doc = this.documents().find((item) => item.documentId === id);
+    return doc?.title ?? 'this document';
+  });
+
+  readonly createForm = this.fb.group({
+    title: ['', [Validators.required, Validators.maxLength(100)]],
+  });
+
   ngOnInit(): void {
     this.fetchDocuments();
   }
-  
+
   private fetchDocuments(): void {
     this.isLoading.set(true);
-    
-    // updating the library document list state
-    this.docService.loadLibrary().subscribe({
-      next: () => this.isLoading.set(false),
-      error: () => {
-        this.isLoading.set(false);
-        // Error handling (e.g., showing a toast notification) goes here
-      }
-    });
-  }
-  
-  mapPermissionToStatus(permission: DocPermission): DocStatus {
-    if (permission === 'OWNER') return 'owned';
-    // If they are an EDITOR or VIEWER, it is a shared document.
-    return 'shared'; 
+
+    this.docService
+      .loadLibrary()
+      .pipe(
+        finalize(() => this.isLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        error: () => {
+          this.isLoading.set(false);
+        },
+      });
   }
 
-  // --- Modal & Creation Logic ---
+  mapPermissionToStatus(permission: DocPermission): DocStatus {
+    return permission === 'OWNER' ? 'owned' : 'shared';
+  }
 
   openCreateModal(): void {
-    this.createForm.reset();  // Clear form state each time we open the modal
+    this.createForm.reset({ title: '' });
     this.isCreateModalOpen.set(true);
   }
 
@@ -159,40 +253,87 @@ export class LibraryPageComponent implements OnInit {
     }
 
     this.isCreating.set(true);
-    
-    // We send an empty string for content initially
+
     const payload = {
-      title: this.createForm.getRawValue().title,
-      content: '' 
+      title: this.createForm.getRawValue().title.trim(),
+      content: '',
     };
 
-    this.docService.createDocument(payload).subscribe({
-      next: (newDoc: DocumentSummary) => {
-        this.isCreating.set(false);
-        this.closeCreateModal();
-        // Immediately navigate the user to the editor workspace for their new document
-        // this.router.navigate(['/editor', newDoc.documentId]);
-      },
-      error: (err) => {
-        this.isCreating.set(false);
-        console.error('Document creation failed', err);
-      }
-    });
+    this.docService
+      .createDocument(payload)
+      .pipe(
+        finalize(() => this.isCreating.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (newDoc: DocumentSummary) => {
+          this.closeCreateModal();
+          void this.router.navigate(['/documents', newDoc.documentId]);
+        },
+        error: () => {
+          // toast or error state
+        },
+      });
   }
 
-  // --- Card Action Handlers ---
-
   handleOpenDocument(id: string): void {
-    this.router.navigate(['/documents', id]);
+    void this.router.navigate(['/documents', id]);
   }
 
   handleShareDocument(id: string): void {
-    // We will hook this up to a sharing modal in the future
-    // console.log('Initiate share flow for doc:', id);
+    const documentId = Number(id);
+
+    if (!Number.isFinite(documentId)) {
+      return;
+    }
+
+    this.selectedShareDocumentId.set(documentId);
+    this.isShareModalOpen.set(true);
+  }
+
+  closeShareModal(): void {
+    this.isShareModalOpen.set(false);
+    this.selectedShareDocumentId.set(null);
   }
 
   handleDeleteDocument(id: string): void {
-    // We will hook this up to a deletion confirmation modal and service call
-    // console.log('Initiate delete flow for doc:', id);
+    const documentId = Number(id);
+
+    if (!Number.isFinite(documentId)) {
+      return;
+    }
+
+    this.selectedDeleteDocumentId.set(documentId);
+    this.isDeleteModalOpen.set(true);
+  }
+
+  closeDeleteModal(): void {
+    this.isDeleteModalOpen.set(false);
+    this.selectedDeleteDocumentId.set(null);
+  }
+
+  confirmDeleteDocument(): void {
+    const documentId = this.selectedDeleteDocumentId();
+
+    if (documentId === null || this.isDeleting()) {
+      return;
+    }
+
+    this.isDeleting.set(true);
+
+    this.docService
+      .deleteDocument(documentId)
+      .pipe(
+        finalize(() => this.isDeleting.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () => {
+          this.closeDeleteModal();
+        },
+        error: () => {
+          // toast or error state
+        },
+      });
   }
 }

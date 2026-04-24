@@ -128,6 +128,7 @@ public class DocumentService {
         lockRepository.deleteByDocument(doc);
         accessRequestRepository.deleteAllByDocument(doc);
         inviteRepository.deleteAllByDocumentId(docId);
+        permissionRepository.deleteByDocument(doc);
         documentRepository.delete(doc);
         log.info("Document {} deleted by owner {}", docId, user.getUsername());
     }

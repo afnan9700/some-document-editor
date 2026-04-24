@@ -11,6 +11,7 @@ import com.somedomain.collab_editor.document.Document;
 import com.somedomain.collab_editor.auth.User;
 import com.somedomain.collab_editor.common.exceptions.AppException;
 import com.somedomain.collab_editor.common.exceptions.NotFoundException;
+import com.somedomain.collab_editor.access.AccessRequestDto;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,8 +32,8 @@ public class SharingService {
     private final DocumentPermissionRepository permissionRepository;
 
     public SharingService(InviteRepository inviteRepository,
-                          AccessRequestRepository requestRepository,
-                          DocumentPermissionRepository permissionRepository) {
+            AccessRequestRepository requestRepository,
+            DocumentPermissionRepository permissionRepository) {
         this.inviteRepository = inviteRepository;
         this.requestRepository = requestRepository;
         this.permissionRepository = permissionRepository;
@@ -56,12 +57,13 @@ public class SharingService {
     }
 
     /**
-     * User uses invite token. If autoApprove, grant permission instant; else create a pending AccessRequest.
+     * User uses invite token. If autoApprove, grant permission instant; else create
+     * a pending AccessRequest.
      */
     @Transactional
     public Object useInvite(String token, User requester) {
         Invite invite = inviteRepository.findByToken(token)
-            .orElseThrow(() -> new NotFoundException("Invite not found"));
+                .orElseThrow(() -> new NotFoundException("Invite not found"));
 
         if (invite.getExpiresAt() != null && invite.getExpiresAt().isBefore(Instant.now())) {
             throw new AppException("Invite expired", 400);
@@ -75,7 +77,7 @@ public class SharingService {
                 DocumentPermission perm = new DocumentPermission();
                 perm.setDocument(doc);
                 perm.setUser(requester);
-                perm.setLevel(PermissionLevel.EDITOR); // or default permission
+                perm.setLevel(PermissionLevel.VIEWER); // or default permission
                 perm.setGrantedAt(Instant.now());
                 permissionRepository.save(perm);
             }
@@ -92,7 +94,8 @@ public class SharingService {
             req.setRequester(requester);
             req.setCreatedAt(Instant.now());
             AccessRequest saved = requestRepository.save(req);
-            log.info("Access request {} created for doc {} by user {}", saved.getId(), doc.getId(), requester.getUsername());
+            log.info("Access request {} created for doc {} by user {}", saved.getId(), doc.getId(),
+                    requester.getUsername());
             return saved;
         }
     }
@@ -100,7 +103,7 @@ public class SharingService {
     @Transactional
     public void processRequest(Long requestId, User processor, boolean approve, PermissionLevel grantedLevel) {
         AccessRequest req = requestRepository.findById(requestId)
-            .orElseThrow(() -> new NotFoundException("Request not found"));
+                .orElseThrow(() -> new NotFoundException("Request not found"));
 
         Document doc = req.getDocument();
         if (!doc.getOwner().getId().equals(processor.getId())) {
@@ -115,7 +118,8 @@ public class SharingService {
             perm.setLevel(grantedLevel == null ? PermissionLevel.VIEWER : grantedLevel);
             perm.setGrantedAt(Instant.now());
             permissionRepository.save(perm);
-            log.info("Request {} approved by {} for user {}", requestId, processor.getUsername(), req.getRequester().getUsername());
+            log.info("Request {} approved by {} for user {}", requestId, processor.getUsername(),
+                    req.getRequester().getUsername());
         } else {
             log.info("Request {} rejected by {}", requestId, processor.getUsername());
         }
@@ -128,8 +132,12 @@ public class SharingService {
         return requestRepository.findByDocument(doc);
     }
 
-    public List<AccessRequest> listPendingRequestsForUser(User user) {
-        return requestRepository.findByRequester(user);
+    public List<AccessRequestDto> listPendingRequestsForDocumentOwner(User owner) {
+        return requestRepository.findRequestsForDocumentOwner(owner);
+    }
+
+    public List<AccessRequestDto> listPendingRequestsByRequesterWithDetails(User requester) {
+        return requestRepository.findRequestsByRequesterWithDetails(requester);
     }
 
 }
