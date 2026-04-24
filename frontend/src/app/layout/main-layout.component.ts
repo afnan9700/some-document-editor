@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, signal, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, inject, OnInit } from '@angular/core';
 import { RouterOutlet, Router } from '@angular/router';
 import { NavbarComponent } from './navbar.component';
 import { SidebarComponent } from './sidebar.component';
@@ -13,7 +13,6 @@ import { SidebarComponent } from './sidebar.component';
       
       <div class="drawer-content flex flex-col h-screen overflow-hidden">
         <app-navbar 
-          [userName]="'Turing'" 
           (themeToggle)="handleThemeToggle()"
           (logout)="handleLogout()">
         </app-navbar>
@@ -25,7 +24,7 @@ import { SidebarComponent } from './sidebar.component';
       
       <div class="drawer-side z-40">
         <label for="app-drawer" aria-label="Close sidebar" class="drawer-overlay" (click)="closeDrawer()"></label>
-        <app-sidebar [pendingRequests]="2"></app-sidebar>
+        <app-sidebar></app-sidebar>
       </div>
     </div>
   `

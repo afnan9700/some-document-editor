@@ -1,6 +1,10 @@
 import { Component, ChangeDetectionStrategy, input, output, inject } from '@angular/core';
 import { ThemeService } from '../core/theme.service';
 import { TitleCasePipe } from '@angular/common';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs';
+
+import { AuthService } from '../auth/auth.service';
 
 @Component({
   selector: 'app-navbar',
@@ -41,11 +45,11 @@ import { TitleCasePipe } from '@angular/common';
         <div class="dropdown dropdown-end">
           <button tabindex="0" class="btn btn-ghost btn-circle avatar" aria-label="User Menu">
             <div class="w-10 rounded-full bg-neutral text-neutral-content grid place-items-center">
-              <span class="text-lg">{{ userName().charAt(0) }}</span>
+              <span class="text-lg">{{ userName()?.charAt(0) ?? 'U' }}</span>
             </div>
           </button>
           <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
-            <li class="menu-title"><span>{{ userName() }}</span></li>
+            <li class="menu-title"><span>{{ userName() ?? 'User' }}</span></li>
             <li><a>Settings</a></li>
             <li><a (click)="logout.emit()" class="text-error">Logout</a></li>
           </ul>
@@ -55,8 +59,11 @@ import { TitleCasePipe } from '@angular/common';
   `
 })
 export class NavbarComponent {
+  private auth = inject(AuthService);
   // Signal inputs guarantee strict typing and reactive derived state
-  userName = input.required<string>();
+  userName = toSignal(
+    this.auth.me$.pipe(map(me => me?.username))
+  );
   
   logout = output<void>();
   
