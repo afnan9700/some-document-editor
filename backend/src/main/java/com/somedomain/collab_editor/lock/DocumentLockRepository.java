@@ -23,7 +23,7 @@ public interface DocumentLockRepository extends JpaRepository<DocumentLock, Long
     @Query("""
             select new com.somedomain.collab_editor.lock.DocumentLockDto(l.document.id, u.username, l.expiresAt)
             from DocumentLock l
-            join l.user u
+            join l.lockedByUser u
             where l.document.id = :documentId
             """)
     Optional<DocumentLockDto> findDtoByDocument(@Param("documentId") Long documentId);

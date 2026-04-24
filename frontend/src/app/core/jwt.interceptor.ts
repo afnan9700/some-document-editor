@@ -52,24 +52,30 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
 
           // call refresh endpoint
           return auth.refresh().pipe(
-            switchMap((tokenResp: unknown) => {
-              // after refresh, get new token from service
+            switchMap(() => {
+              // 1. Token is refreshed, but we don't tell the others yet!
               const newToken = auth.getAccessToken();
-              refreshing = false;  // refresh finished
-              refreshSubject.next(newToken);   // emit new token to waiting requests
 
-              // retry the original request with new token
-              const cloned = authReq.clone({
-                setHeaders: newToken ? { Authorization: `Bearer ${newToken}` } : {},
-                withCredentials: true,
-              });
-              return next(cloned);
+              // 2. Load the user profile
+              return auth.loadMe().pipe(
+                switchMap(() => {
+                  // 3. ONLY NOW, after loadMe succeeds, release the waiting requests
+                  refreshing = false;
+                  refreshSubject.next(newToken); 
+
+                  // 4. Retry the original request (the one that triggered the refresh)
+                  const cloned = authReq.clone({
+                    setHeaders: newToken ? { Authorization: `Bearer ${newToken}` } : {},
+                    withCredentials: true,
+                  });
+                  return next(cloned);
+                })
+              );
             }),
             catchError(err => {
-              // refresh failed, reset state and clear auth
+              // If either refresh OR loadMe fails, we clear everything
               refreshing = false;
               refreshSubject.next(null);
-              // clear auth and escalate error to cause redirect to login
               auth.clear();
               return throwError(() => err);
             })

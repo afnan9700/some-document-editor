@@ -24,6 +24,11 @@ export class AuthService {
     return this.accessToken();
   }
 
+  get currentUser(): MeResponse | null {
+    console.log('Getting current user:', this.meSubject.value);
+    return this.meSubject.value; 
+  }
+
   // login: sends credentials; backend returns access token and sets refresh cookie
   login(payload: LoginRequest): Observable<MeResponse> {
     return this.api.post<AuthResponse>('/auth/login', payload).pipe(
@@ -56,11 +61,10 @@ export class AuthService {
   }
 
   // load /me
-  loadMe(): Observable<MeResponse> {
+  loadMe(): Observable<MeResponse> {  
     return this.api.get<MeResponse>('/auth/me').pipe(
       tap(me => {
         this.meSubject.next(me); 
-        // console.log('Loaded user info', me);
       }),
       catchError(err => {
         this.meSubject.next(null);

@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.somedomain.collab_editor.auth.User;
 import com.somedomain.collab_editor.lock.LockService;
-import com.somedomain.collab_editor.lock.DocumentLockDto;
 import com.somedomain.collab_editor.util.SecurityUtils;
 
 @RestController
@@ -117,7 +116,7 @@ public class DocumentController {
     public ResponseEntity<?> getLock(@PathVariable Long id) {
         Document doc = documentService.getById(id);
         var lock = lockService.getLock(doc);
-        return ResponseEntity.ok(Map.of("locked", lock));
+        return ResponseEntity.ok(lock);
     }
 
     @DeleteMapping("/{id}")
