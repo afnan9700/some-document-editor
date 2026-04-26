@@ -4,9 +4,11 @@ import type { AuthResponse, LoginRequest, SignupRequest, MeResponse } from './au
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { tap, catchError, map, switchMap } from 'rxjs/operators';
 import { ApiService } from '../core/api.service';
+import { Router } from '@angular/router';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  private router = inject(Router);
   private api = inject(ApiService);
   // in-memory access token (not persisted to localStorage by default)
   private accessToken = signal<string | null>(null);
@@ -81,7 +83,29 @@ export class AuthService {
 
   // expose a quick logout that clears client-side state; you may also call a backend logout if available
   logout(): void {
-    this.clear();
-    // if you have a server logout endpoint you may call it here, e.g. POST /auth/logout withCredentials
+    this.api.post('/auth/logout', {}).subscribe({
+       next: () => {
+        this.clear();
+      },
+      error: () => {
+        // even if backend logout fails, clear client-side state so user is logged out
+        this.clear();
+      }
+    });
   }
+
+  tryRestoreSession(): Observable<void> {
+  // try refresh 
+  // loadme if refresh succeeds
+  // otherwise redirect to /login
+  return this.refresh().pipe(
+    switchMap(() => this.loadMe()),
+    map(() => void 0),
+    catchError(() => {
+      this.logout();
+      this.router.navigateByUrl('/login');
+      return of(void 0);
+    })
+  );
+}
 }

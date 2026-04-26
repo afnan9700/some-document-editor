@@ -1,7 +1,8 @@
 import { Component, ChangeDetectionStrategy, signal, inject, OnInit } from '@angular/core';
 import { RouterOutlet, Router } from '@angular/router';
 import { NavbarComponent } from './navbar.component';
-import { SidebarComponent } from './sidebar.component';
+import { SidebarComponent } from './sidebar.component'; 
+import { AuthService } from '../auth/auth.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -31,7 +32,8 @@ import { SidebarComponent } from './sidebar.component';
 })
 export class MainLayoutComponent {
   private router = inject(Router);
-  
+  private auth = inject(AuthService);
+
   // Local UI state managed securely via signals
   isDrawerOpen = signal(false);
 
@@ -49,6 +51,7 @@ export class MainLayoutComponent {
 
   handleLogout(): void {
     // Clear auth tokens logically here before routing
+    this.auth.logout();
     this.router.navigate(['/login']);
   }
 }

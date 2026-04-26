@@ -5,7 +5,6 @@ export const routes: Routes = [
   {
     path: '',
     loadComponent: () => import('./layout/main-layout.component').then(m => m.MainLayoutComponent),
-    // loadComponent: () => import('./layout/main-layout.component').then(m => {console.log('MainLayout loaded'); return m.MainLayoutComponent}),
     
     children: [
       { 
@@ -17,7 +16,6 @@ export const routes: Routes = [
       { 
         path: 'library', 
         loadComponent: () => import('./documents/library-page.component').then(m => m.LibraryPageComponent) 
-        // loadComponent: () => import('./documents/library-page.component').then(m => {console.log('LibraryPage loaded'); return m.LibraryPageComponent})
       },
       {
         path: 'documents/:id',
@@ -49,7 +47,6 @@ export const routes: Routes = [
     // unauthenticated users will only have access to the auth layout and its child routes
     path: '',
     loadComponent: () => import('./layout/auth-layout.component').then(m => m.AuthLayoutComponent),
-    // loadComponent: () => import('./layout/auth-layout.component').then(m => {console.log('AuthLayout loaded'); return m.AuthLayoutComponent}),
     children: [
       { 
         path: 'login', 
