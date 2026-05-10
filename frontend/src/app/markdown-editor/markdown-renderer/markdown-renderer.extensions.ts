@@ -46,9 +46,11 @@ export function createCustomImageExtension(): MarkdownRendererExtension {
           {
             name: 'customImage',
             level: 'inline',
+            
             start(src: string): number {
               return src.indexOf('![[');
             },
+
             tokenizer(src: string): CustomImageToken | undefined {
               const match =
                 /^!\[\[([^|\]]+)\|([^|\]]+)\|([0-9]+(?:\.[0-9]+)?)\]\]/.exec(

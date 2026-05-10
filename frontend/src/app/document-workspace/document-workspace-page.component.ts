@@ -189,6 +189,7 @@ export class DocumentWorkspacePageComponent {
         },
       });
 
+      // for when a different document is loaded or component is destroyed
       onCleanup(() => {
         sub.unsubscribe();
 
@@ -201,6 +202,7 @@ export class DocumentWorkspacePageComponent {
       });
     });
 
+    // lock refresh subscription
     effect((onCleanup) => {
       const documentId = this.activeDocumentId();
       if (documentId === null || !this.lockHeld()) {
@@ -218,6 +220,7 @@ export class DocumentWorkspacePageComponent {
       onCleanup(() => sub.unsubscribe());
     });
 
+    // auto-save subscription
     effect((onCleanup) => {
       const documentId = this.activeDocumentId();
       if (documentId === null || !this.canEdit()) {
@@ -249,7 +252,7 @@ export class DocumentWorkspacePageComponent {
 
   returnToLibrary(): void {
     this.lockModalOpen.set(false);
-    this.router.navigate(['/documents']); // replace with your actual library route if different
+    this.router.navigate(['/library']);
   }
 
   async saveDocument(): Promise<void> {

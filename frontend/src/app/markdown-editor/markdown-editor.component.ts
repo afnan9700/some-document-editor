@@ -41,8 +41,8 @@ import { createMarkdownToolbarActions } from './markdown-editor-toolbar/markdown
   template: `
     <div class="card h-full min-h-0 border border-base-300 bg-base-100 shadow-sm">
       <div class="card-body flex h-full min-h-0 flex-col gap-4 p-4">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div class="tabs tabs-box" role="tablist" aria-label="Editor mode">
+        <div class="flex flex-wrap items-center justify-between gap-3"> <!-- toolbar area -->
+          <div class="tabs tabs-box" role="tablist" aria-label="Editor mode">  <!-- preview tab group -->
             <button
               type="button"
               role="tab"
@@ -86,7 +86,7 @@ import { createMarkdownToolbarActions } from './markdown-editor-toolbar/markdown
               <app-markdown-preview [html]="previewHtml()" />
             </section>
           }
-        </div>
+        </div> 
       </div>
     </div>
   `,
@@ -115,8 +115,8 @@ export class MarkdownEditorComponent implements AfterViewInit {
   readonly contentChange = output<string>();
   readonly modeChange = output<MarkdownEditorMode>();
 
-  readonly activeMode = signal<MarkdownEditorMode>('source');
-  readonly doc = signal('');
+  readonly activeMode = signal<MarkdownEditorMode>('source'); 
+  readonly doc = signal('');  // main source of truth for editor content
   readonly previewHtml = computed(() => this.renderer.render(this.doc()));
 
   readonly editorPanelId = `markdown-editor-panel-${++editorInstanceCounter}`;
@@ -139,6 +139,7 @@ export class MarkdownEditorComponent implements AfterViewInit {
     });
 
     // content change effect
+    // for content changes from outside the editor 
     effect(() => {
       const next = this.content();
       this.doc.set(next);  // update doc signal

@@ -34,7 +34,7 @@ export const routes: Routes = [
       {
         path: 'requests',
         loadComponent: () =>
-          import('./document-sharing/requests-page.component').then((m) => m.RequestsPageComponent),
+          import('./document-sharing/document-requests-page.component').then((m) => m.RequestsPageComponent),
       },
       {
         path: 'invite/:token',

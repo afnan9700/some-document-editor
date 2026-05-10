@@ -7,33 +7,6 @@ I already had some experience with Java, and I also really wanted to learn sprin
 
 I will mention it. This whole application is written by chatgpt. Yeah. Its written by chatgpt, but I understand the working of almost all of it. So... I think its fine? I don't know. I do make sure to read and understand everything before I paste it into my codebase. And tbh, this doesn't really feel that much different than "following a tutorial" on youtube (though ive never really done that, so i could be wrong). But it feels like its working, and I understand everything well enough to identify any problems that might occur (i think), so... Idk. I just wanted to justify using chatgpt a little, that's it. And I think that was enough justification.
 
-My step-0 was to give this prompt to chatgpt. 
-```
-hey I am not very familiar with using spring in java    
-
-I wanna make this project and gain some familiarity in the process.    
-
-a simple collaborative document editor    
-- basic auth with username and password. jwts.    
-- a document is just plain text (maybe we can render it as markdown if possible)
-- the main page of the application shows the user's "library". library just contains all the documents the user has created.    
-- users can create documents, delete documents    
-- users can open the document. after opening, they can read the document and make edits. after making edits, the users can "save" the document. and there is an option to "start collaborating"    
-- now I don't know if this is a good way to implement it, but I am imagining something similar to how google meet works. "start collaborating" will create a "room" that other users can join. each document has an owner (the one who created the document). the owner user has rights to allow other users into the room, and kick them out of the room.     
-- maybe "start collaborating" will start a webscoket connection with the server. but how would a server maintain several websocket connections?    
-- once multiple users have been connected to a document, they can start making changes to it. any change made by any user should be visible to other users real-time.     
-- I don't know what exactly will get sent after a user makes an edit to the document. so really need your help here. but i am imagining these patterns:     
-	1. each user has a "local copy" of the document. and when any user makes a change to the document, the "change" is what gets sent to the server, and the server forwards the "change" to all other users in the room so that they can update their local copy. i know that there will be problems with consistency and latancy, but i am not concerned about it that much at the moment. and before any user leaves, the whole document gets saved to the db.    
-	2. whenever a user makes a change, the "change" is what gets sent to the server. the server applies this change to the document in the db, and sends a copy of that document to all users in the room.     
-	3. the "changes" don't get sent after every time the user makes a change. whenever a use starts typing, an "inactivity timer" starts running locally. everytime the user makes a change, the timer gets reset to 0. and there is a certain threshold associated this timer. as long as the timer is below the threshold, the other users only see a typing status indicator (such as "user x is typing"). once the inactivity timer reaches the threshold, all the changes which the user made with in that time interval get sent to the server. and the server may distribute those changed in either of the previously mentioned ways. I feel that this could be more efficient than sendig each and every character entered and deleted. but idk.  
-  
-I know that my designs may have major flaws. so I need your help. please suggest what you think would be a good way to build it. also mention your reasoning  
-    
-i know that a collaborative editor is a rabbit hole about crdts and ots and what not. but this is only a toy project and i am not really concerned about consistency and throughput and scalability and all that.    
-    
-can we make this? i have worked with js, but dont know much about spring. and i have heard that its often used in microservices. do you think if implementing some microservice-like architecture here could be possible? i would like to also gain familiarity with caching and message brokers (if and only if they are relevant to this project). for the database, we could use postgres (along with maybe "supabase"?). and for the frontend, we could use react. and react is the only one I am familiar with.
-```
-
 ---
 ## chapter 1
 (25-11-14)
@@ -493,5 +466,157 @@ Anyway, we haven't even started working with the actually complex side of things
 
 Its alright. 
 See ya.
+
+---
+
+## chapter 7
+<details>
+<summary>(10-5-26)</summary>
+Ugh I am really sorry about the delay... I know that there isn't really anyone I need to be sorry to (other than myself of course), but... I just felt like I had to say it. I will try to be more regular from now on. 
+</details>
+
+Many new changes and additions since the last entry. On both the frontend, and a few on the backend too. It feels like there is so much that I might not be able to go over everything here. So I will talk about only those things which I believe were complex. 
+
+A document editing app needs a document editing interface (duh). I was being a bit ambitious with this app so I went with codemirror. (yes i was considering using a different package (prosemirror) before. but after reevaluating my requirements a bit, i felt codemirror was a more suitable choice)
+
+Codemirror provides the interface for only the document editing, nothing else. The job of parsing the markdown syntax and rendering the formatted text is handled by an entirely different package. This was so obvious, but I didn't recognize this distinction earlier and wasted much time by going unnecessarily deep into the codemirror docs. 
+(you can check out [[codemirror-struggle]] T_T)
+
+To be really honest, I didn't have a clear idea about what exactly I want this document editor to be capable of myself. All I knew was that 
+- It should be extensible to support live editing in future (which is why I went with codemirror)
+- I should be able to add custom rendering rules.(I mistook that this part was handled by codemirror. whereas, it is actually the job of the markdown parser)
+Thinking back, I should have probably thought through the exact details a bit more. Might have saved the time lost digging aimlessly through the codemirror docs.
+
+It had already spent a bit too much time on this app, and knowing that it was still in such a early stage caused me some panic. And out of panic, I turned to the very thing I feared the most... I vibe coded. Yeah, like the real raw vibe coding. I just asked chatgpt and pasted everything without trying to understand any of it. The whole process felt so wrong, but I was desperate. I want to never have to do it again please. But... It looks like gpt implemented everything nearly flawlessly. 
+
+I did obviously go through all of the code later to get an idea of the architecture and stuff, and my opinion still remains the same. All of it not only flawless, but even so intelligent. Not the kind of stuff I could have come up with, let alone code. Except for a few tiny weird details which I later refined (though some still remain).
+
+Aight. Now to the specifics...
+
+First, I will mention it. This part of the application has to be the most complex thing *I* have tried to understand yet (maybe after the silent refresh and spring security. or maybe not). This has like different layers to it, and again layers within layers. 
+
+Broadly, I would say there are two main layers
+1. The document editor itself. 
+2. The document workspace. This adds some additional information about the document part which handles API communication. Locking/unlocking the document, loading the document content in normal/read-only modes, periodic saving, and maybe integrating other complex components in future such as a chat system.
+
+### markdown editor
+In the codebase, `MarkdownEditorComponent` represents the whole of the first part. This part's job is only to render the markdown editing interface, switch between source/preview modes, expose ways to retrieve the current document content, and other related information. 
+
+The markdown editor is further composed of three main parts
+- The main codemirror editor
+- The toolbar. 
+- The markdown renderer.
+
+#### markdown renderer
+You can switch between two modes in the app - Source mode and Preview mode. The source mode just hosts the codemirror editor. And when switched to the preview mode, the codemirror editor gets replaced by the HTML generated by the markdown renderer. 
+
+The job of the markdown renderer (marked.js) is simple - It takes the raw markdown text, parses it, and returns properly formatted HTML. Marked.js is very flexible, so it also allows us to add our own custom rendering rules. But I will go over it later.
+
+Though the main task of this component is simplistic, there are a few subtleties when rendering custom HTML that pose some major problems if not handled properly. All of this is regarding Cross-Site Scripting Attacks. Basically, it is possible that a malicious user can use custom HTML to trigger fetch requests, steal cookies, and other problematic stuff. 
+
+So, we sanitize the HTML generated by marked before we put in the DOM. It is done by using the `DOMPurify`. But there is another problem. Angular sanitizes anything you put into `innerHTML` by default, ant it's a bit paranoid with the sanitation, so it removes *every* HTML tag from the input, including the ones which add formatting. But since we sanitized the HTML already, we bypass angular's sanitizer (using `DOMSanitizer` and `SafeHTML`).
+
+About custom extensions... Markdown parsing in marked works a bit like this
+1. Marked doesn't perform heavy regex checking for every sequence of characters in the document. It first looks for a substring that matches the "start" of a markdown syntax.
+2. Once found, it begins the regex parsing, and converts the parsed regex string into a "token". A token usually contains some information about the syntax in a more structured format. 
+3. Now it uses the token to render the HTML based on the rendering rules. 
+
+But chatgpt did something here that didn't feel very right to me, but it keeps stressing that it's right. 
+
+Instead of just adding the custom extensions to a list and passing each to `marked.use()`, chatgpt created an injection token `MARKDOWN_RENDERER_EXTENSIONS`. Then for each custom extension it created `multi: true` angular provider. These providers are associated with the injection token `MARKDOWN_RENDERER_EXTENSIONS`. So to finally apply the extensions, you inject `MARKDOWN_RENDERER_EXTENSIONS` token, read the extensions, and call `marked.use()`.  
+
+It says that it makes the app more "extensible", but I can't see how. Does it allow dynamic enabling and disabling of extensions? I don't think so. All extensions are still passed statically in `app.config`. So what was the point? I am not sure yet, and I decided that I will look into it later.
+
+Also, I should probably really look into dynamically enabling, disabling, and adding new extension. What is the purpose of all of this architecture if the app can't do that.
+
+#### markdown toolbar
+I won't go into much detail here. But there is another thing which bugged me a bit with how chatgpt implemented it. 
+
+The toolbar is just a list of buttons that perform some action to the document. Each button is associated with a "toolbar action". A toolbar action has a function `run()` which gets called upon clicking the button. 
+
+To actually perform any such action, the `run()` function needs access to a variety of information about the document. Things such as the document content, the cursor position, ability to dispatch transactions etc. All of the information is passed to the `run()` function as a parameter `ctx: MarkdownToolbarContext`. The main markdown editor, which is the parent component to the toolbar component, passes the context object to the toolbar as an input signal.
+
+Here comes the weird part: Where do you expect the `run()` function to be defined? In the `run()` field of the markdown toolbar action right? 
+
+Yeah but chatgpt did this instead...
+```ts
+run: (ctx) => ctx.insertCodeBlock(codeBlockLanguage),
+```
+The function `insertCodeBlock()` is provided as a field in the context object. `insertCodeBlock()` function is defined in the markdown editor parent component, and gets included in the context which will be passed to the toolbar action. 
+
+It feels so roundabout to me. Like why not just define the insert code block function directly to the run function? Especially since we are already using a context object. I can see that you might want to define the insert code block function directly inside the markdown editor because the job is just too relevant to what the editor is already doing. But if you are going to do that, why bother with the context object at all? 
+
+I decided to look past it for now because it seems to work fine, but I might change things around later.
+
+Also, along with the context object, the list of markdown toolbar actions is also passed to the toolbar component by the parent editor component. I should probably remember this because it means that the parent editor has control over which exact actions should be included in the toolbar.
+
+#### codemirror editor
+One very subtle but very smart thing chatgpt did here was the switch between the source and preview modes. Normally, you would this by using the `@if` directive. But chatgpt instead did this:
+```ts
+[style.display]="activeMode() === 'source' ? 'block' : 'none'"
+// and a generic @if for the preview component
+```
+The reason why it's smart is because, if you had used `@if`, the codemirror editor would have got completely removed from the DOM and it would have to be initialized again every time the user switches to source mode. By utilizing `style.display`, the editor stays active but just becomes hidden visually. 
+
+I will talk about the most basic thing expected from any editor - reading and writing. Other components need a way to read the contents of the editor. This is done by registering an `updateListener` (provided by codemirror) that updates the value of `doc` signal based on the content in the editor currently. It also emits a `contentChange` event that higher level components can read to know the saved/dirty states.
+
+The cool thing is, you can change the editor's content from outside the editor using the methods `setContent` and `replaceSelection`. 
+
+<details>
+<summary>ignore</summary>
+<p>The cool thing is, you can change the editor's content from outside the editor using the `content` signal. There is an effect that synchronizes the `doc` signal and codemirror's internal state whenever a change in `content` is detected. </p>
+
+<p>But yeah, something feels odd here right? We already had the `doc` signal that represented the document's current content. Why a different signal (`content`) again? The external changes could have just been made to the `doc` signal, and registering an effect on `doc` instead of `content` would have synchronized everything right?</p>
+
+<p>It would have worked, but it also would have led to too many unnecessary effect triggers. Just think about it a bit. You are using the `doc` to reflect codemirror changes, and you are registering an effect on the same signal to synchronize with the codemirror state. The intent behind effect is to trigger it when a change from outside the editor arrives, but the effect would keep getting triggered every time the codemirror changes the document's content.</p>
+
+<p>So we use the two signal approach. One for reading, other for writing. If an external service wants push an update to the document being edited, it first reads the document from `doc` and pushes its edit from `content`. No unnecessary effects triggered, everything synchronized. </p>
+
+<p>Honestly, I initially thought that chatgpt had made a mistake with not using `doc` for external changes here. Even a different instance of chatgpt agreed with me lol. But I thought about it a little and yeah, it has outsmarted me yet again. Oh yea, gotta be careful with chatgpt's tendency to affirm my statements. I was almost about to make those changes to the code.</p>
+
+<p>...</p>
+
+<p>Actually wait. I just realized something. The `content` signal isn't even the intended way to change the document's content from the outside! There are two methods `setContent` and `replaceSelection` that you actually use. </p>
+
+<p>What was the reason for all of that with the effect and `content` signal then??? Did I just reason my way through literally nothing? Maybe content's purpose was really nothing more than just the initial value to load into the editor. Sigh. Felt like I was on to something. I am just going to let all of it stay here just ignore it please.</p>
+
+<p>Also ugghhh. It's so obvious! Of course you pack all of the logic of synchronization neatly into a single method! What's with all this gymnastics with effects! ive still got a long way to go it seems.</p> 
+</details>
+
+There is the `extraExtensions` compartment you can use to add custom extensions to the editor. Though I haven't added any, and I don't think I will either. Most of the extensions I am interested are on the rendering side of things. 
+
+There isn't much to say about the editor now. There are many utility method such as `getContent`, `isReadonly`, `focus` etc. you can check out. It was fairly simple given the complexity I was anticipating with codemirror. Perhaps it get complex when I try to integrate it with y.js in future.
+
+i might want to keep this small thing in mind: `isReadonly` returns `true` when the editor is in the preview mode. Thus, `isReadonly` is not a source of the user's permission of the document. 
+
+also keep in mind the editor's input signals. these are essentially the things configurable by the parent: `extraExtensions`, `toolbarActions`, `readonly`, `mode`, `content`.
+
+### document workspace
+There are two parts here
+- The document workspace component.
+- The document workspace page.
+Currently, the workspace component does almost nothing, and just acts a visual shell to place other components into. All of the actual logic is handled by the page component instead. The responsibilities feel like they've been assigned improperly. So I am considering restructuring the design a bit. 
+
+But the core functionalities will remain the same, so I will talk about those now, and restructure the thing later.
+
+To be really honest, there isn't much to say here. If you understand rxjs well enough, most of it is straightforward. We use the `interval()` function for subscriptions for auto lock refresh, and auto save. And we also handle to the `contentChange` event that was emitted down in the markdown editor here. 
+
+The only odd detail I found here was with `routeDocumentId` and `activeDocumentId`. `routeDocumentId` is read from the route the user is currently at. It is used to get the document ID. But instead of just using this variable for all other purposes in the component, we use `activeDocumentId`, which just contains the value copied from `routeDocumentId`. 
+
+If the document is locked by another user, the user can proceed with opening the document in a readonly mode. I could have added made it such that this page component itself can become strictly readonly, but I instead created a whole new document workspace readonly page component and just redirected the user to that page. I don't know if I should consider changing the design here to make the single page act as both readonly and editable component.
+
+I also added some space to insert other components in the workspace in future. Like a chatting system. 
+
+`### sharing and access requests`
+I went through the whole folder and... Most of it fairly trivial really. The only new thing to me was the `InviteLandingComponent`. When an invite link is used, the user is redirected to the invite landing page. But this isn't a page really. All it does is, it shows the loading spinner, process the invite request on init, and redirects the user to the requests page. That's it. Seeing a component with such a minimal responsibility was kind of new.
+
+### misc
+So that's it...? Kind of yeah. 
+
+I did make some changes on the backend too. Mainly on the database and repository layers. But I will talk about those later. I am a bit done for today. 
+
+I have so many plans for this app. But there are many issues too, like the ones I mentioned so far. The JWT behavior of my app is also not the most perfect. I remember wanting to add a way to cache the JWTs. I also want to add OAuth. For the bigger features, I have a chat system in mind, live editing, something that might use LLMs, and maybe even collaborative editing if possible. I also really want to make it such that you can run custom games inside these documents. I know that it's not what a "document" should be doing. But it seems it's possible by using something "iframe". I haven't looked into it so I don't know yet.
+
+idk. im leaving now. i am going to back much sooner the next time really!
 
 ---
