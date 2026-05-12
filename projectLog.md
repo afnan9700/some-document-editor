@@ -1,4 +1,4 @@
-# Collaborative Document Editor Log
+# Document Editor Log
 Before anything, I will first clarify what these ramblings even are. This is an extremely "me-thing", and one I have observed to work really work for me. So I expect no one consider this of any value as I do. Thus, please ignore the fact that I have spent a considerable amount of time typing all of this out instead of actually working on something substantial.
 
 So I heard from somewhere that making collaborative applications can be quite complex, and hence they also serve as a good learning experience. So I thought that I would give it a shot. 
