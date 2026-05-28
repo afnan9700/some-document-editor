@@ -1,6 +1,9 @@
 package com.somedomain.collab_editor.auth;
 
-import java.security.Key;
+import java.security.PrivateKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.KeyFactory;
+
 import java.util.Date;
 import java.util.Map;
 import java.util.function.Function;
@@ -9,39 +12,49 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import com.somedomain.collab_editor.common.exceptions.AppException;
+
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
 
 @Service
 public class JwtService {
 
-    private final String secretKey;
+    private final String privateKeyPem;
     private final long accessTokenExpirationMs;
     private final long refreshTokenExpirationMs;
 
     public JwtService(
-            @Value("${jwt.secret}") String secretKey,
+            // Change this property name to reflect it's now a private key
+            @Value("${jwt.private-key}") String privateKeyPem, 
             @Value("${jwt.access-token-expiration-ms}") long accessTokenExpirationMs,
             @Value("${jwt.refresh-token-expiration-ms}") long refreshTokenExpirationMs) {
-        this.secretKey = secretKey;
+        this.privateKeyPem = privateKeyPem;
         this.accessTokenExpirationMs = accessTokenExpirationMs;
         this.refreshTokenExpirationMs = refreshTokenExpirationMs;
     }
 
-    private Key getSigningKey() {
-        // Expecting a Base64-encoded secret. For dev, you can adapt if you're using plain text.
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
-        return Keys.hmacShaKeyFor(keyBytes);
+    private PrivateKey getPrivateKey() {
+        try {
+            // 1. Decode the Base64 private key string
+            byte[] keyBytes = Decoders.BASE64.decode(privateKeyPem);
+            
+            // 2. Convert the bytes into a Java PrivateKey object
+            PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
+            KeyFactory kf = KeyFactory.getInstance("RSA");
+            return kf.generatePrivate(spec);
+        } catch (Exception e) {
+            throw new AppException("Failed to load RSA private key", 500);
+        }
     }
 
     public String generateAccessToken(UserDetails userDetails) {
         return buildToken(Map.of("tokenType", "access"), userDetails, accessTokenExpirationMs);
     }
 
-    public String generateRefreshToken(UserDetails userDetails) {
+    public String generateRefreshToken(UserDetails userDetails)  {
         return buildToken(Map.of("tokenType", "refresh"), userDetails, refreshTokenExpirationMs);
     }
 
@@ -52,7 +65,7 @@ public class JwtService {
             .setSubject(userDetails.getUsername())
             .setIssuedAt(new Date(now))
             .setExpiration(new Date(now + expirationMs))
-            .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+            .signWith(getPrivateKey(), SignatureAlgorithm.RS256) 
             .compact();
     }
 
@@ -88,7 +101,7 @@ public class JwtService {
 
     private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
-            .setSigningKey(getSigningKey())
+            .setSigningKey(getPrivateKey())
             .build()
             .parseClaimsJws(token)
             .getBody();
