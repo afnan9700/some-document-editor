@@ -32,6 +32,14 @@ services:
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
     depends_on:
       - db
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
 
   # 3. Frontend Service
   frontend:
@@ -48,3 +56,4 @@ services:
 # Define named volumes for data persistence
 volumes:
   pgdata:
+  redis-data:
