@@ -63,7 +63,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         
         // 1. Specify the exact origins allowed. Do not use "*" in production.
-        configuration.setAllowedOrigins(List.of("http://localhost:4200"));
+        configuration.setAllowedOrigins(List.of("http://localhost:80", "http://localhost:4200", "http://localhost"));
         
         // 2. Explicitly allow the HTTP methods your API uses.
         // The OPTIONS method is mandatory for preflight requests to succeed.
