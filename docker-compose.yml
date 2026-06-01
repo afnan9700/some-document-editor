@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # 1. Database Service
   db:
@@ -30,6 +28,9 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     depends_on:
       - db
       - redis
@@ -40,6 +41,35 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  ws-service:
+    build:
+      context: ./ws-service
+    env_file:
+      - .env
+    ports:
+      - "8081:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+    expose: 
+      - "8081"
+
+  haproxy:
+    image: haproxy:2.9-alpine
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      ws-service:
+        condition: service_started
 
   # 3. Frontend Service
   frontend:
