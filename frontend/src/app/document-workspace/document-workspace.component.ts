@@ -119,7 +119,8 @@ export class DocumentWorkspaceComponent {
   readonly toolbarActions = input<MarkdownToolbarAction[] | null>(null);
   readonly theme = input<MarkdownEditorTheme | null>(null);
   readonly extraExtensions = input<Extension[]>([]);
-
+  
+  // forwarding events from the child component to the parent page component
   readonly contentChange = output<string>();
   readonly modeChange = output<MarkdownEditorMode>();
   readonly saveRequested = output<void>();

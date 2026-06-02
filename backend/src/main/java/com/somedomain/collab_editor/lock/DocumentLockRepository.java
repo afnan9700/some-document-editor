@@ -15,17 +15,20 @@ public interface DocumentLockRepository extends JpaRepository<DocumentLock, Long
 
     void deleteByDocument(Document document);
 
-    // Ensure @Param is used for robust parameter binding when compiling with the
-    // -parameters flag off
     @Query("select l from DocumentLock l where l.document.id in :ids")
     List<DocumentLock> findByDocumentIdIn(@Param("ids") List<Long> ids);
 
     @Query("""
-            select new com.somedomain.collab_editor.lock.DocumentLockDto(l.document.id, u.username, l.expiresAt)
+            select new com.somedomain.collab_editor.lock.DocumentLockDto(
+                l.document.id,
+                l.lockType,
+                u.id,
+                u.username,
+                l.expiresAt
+            )
             from DocumentLock l
-            join l.lockedByUser u
+            left join l.lockedByUser u
             where l.document.id = :documentId
             """)
     Optional<DocumentLockDto> findDtoByDocument(@Param("documentId") Long documentId);
-
 }
