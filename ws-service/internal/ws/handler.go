@@ -76,6 +76,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	client := hub.NewClient(
 		conn,
 		payload.UserID,
+		payload.Username,
 		payload.DocumentID,
 		string(payload.PermissionLevel),
 		h.cfg.WebSocketSendBuffer,

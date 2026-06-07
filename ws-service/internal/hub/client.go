@@ -15,6 +15,7 @@ type Client struct {
 	Send            chan []byte
 	Done            chan struct{}
 	UserID          int64
+	Username        string
 	DocumentID      int64
 	PermissionLevel string
 	WriteWait       time.Duration
@@ -26,7 +27,7 @@ type Client struct {
 	unregisterOnce sync.Once
 }
 
-func NewClient(conn *websocket.Conn, userID, documentID int64, permissionLevel string, sendBuffer int, readLimit int64, writeWait, pongWait, pingPeriod time.Duration) *Client {
+func NewClient(conn *websocket.Conn, userID int64, username string, documentID int64, permissionLevel string, sendBuffer int, readLimit int64, writeWait, pongWait, pingPeriod time.Duration) *Client {
 	if sendBuffer <= 0 {
 		sendBuffer = 64
 	}
@@ -35,6 +36,7 @@ func NewClient(conn *websocket.Conn, userID, documentID int64, permissionLevel s
 		Send:            make(chan []byte, sendBuffer), // buffered channel for messages to be sent to the client
 		Done:            make(chan struct{}),           // channel to signal when the client connection is closed
 		UserID:          userID,                        // authenticated user ID associated with this client connection
+		Username:        username,                      // username of the authenticated user
 		DocumentID:      documentID,                    // document ID that this client is collaborating on
 		PermissionLevel: permissionLevel,               // permission level of the user ("editor", "viewer")
 		WriteWait:       writeWait,                     // max time message can stay in the tcp buffer

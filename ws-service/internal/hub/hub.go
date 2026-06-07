@@ -57,6 +57,7 @@ func (h *Hub) Register(ctx context.Context, client *Client) error {
 	h.logger.Info("client registered",
 		"documentId", client.DocumentID,
 		"userId", client.UserID,
+		"username", client.Username,
 		"permissionLevel", client.PermissionLevel,
 	)
 
@@ -137,6 +138,7 @@ func (h *Hub) notifyParticipantEvent(ctx context.Context, client *Client, typ pr
 		Payload: protocol.MustPayload(protocol.ParticipantEventPayload{
 			DocumentID:      client.DocumentID,
 			UserID:          client.UserID,
+			Username:        client.Username,
 			PermissionLevel: client.PermissionLevel,
 			Message:         message,
 		}),

@@ -50,6 +50,7 @@ public class WebSocketTicketService {
         WebSocketTicketPayload payload = new WebSocketTicketPayload(
                 documentId,
                 principalUser.getId(),
+                principalUser.getUsername(),
                 permissionLevel,
                 now,
                 expiresAt

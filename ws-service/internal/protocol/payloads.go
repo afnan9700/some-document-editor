@@ -19,6 +19,7 @@ type ErrorPayload struct {
 type ParticipantEventPayload struct {
 	DocumentID      int64  `json:"documentId"`
 	UserID          int64  `json:"userId"`
+	Username        string `json:"username"`
 	PermissionLevel string `json:"permissionLevel"`
 	Message         string `json:"message"`
 }
