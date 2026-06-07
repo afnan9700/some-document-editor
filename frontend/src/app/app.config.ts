@@ -2,7 +2,7 @@ import { provideAppInitializer, ApplicationConfig, provideBrowserGlobalErrorList
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { environment } from '../environments/environment';
-import { API_BASE_URL } from './core/tokens';
+import { API_BASE_URL, WS_BASE_URL } from './core/tokens';
 import { jwtInterceptor } from './core/jwt.interceptor';
 import { createCustomImageExtension, provideMarkdownRendererExtensions } from './markdown-editor/markdown-renderer/markdown-renderer.extensions';
 
@@ -16,6 +16,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideHttpClient(withInterceptors([jwtInterceptor])),
     { provide: API_BASE_URL, useValue: environment.apiBaseUrl },
+    { provide: WS_BASE_URL, useValue: environment.wsBaseUrl },
     
     ...provideMarkdownRendererExtensions(
       createCustomImageExtension(),
