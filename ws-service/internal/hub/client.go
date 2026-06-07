@@ -22,7 +22,8 @@ type Client struct {
 	PingPeriod      time.Duration
 	ReadLimit       int64
 
-	closeOnce sync.Once
+	closeOnce      sync.Once
+	unregisterOnce sync.Once
 }
 
 func NewClient(conn *websocket.Conn, userID, documentID int64, permissionLevel string, sendBuffer int, readLimit int64, writeWait, pongWait, pingPeriod time.Duration) *Client {
@@ -31,23 +32,31 @@ func NewClient(conn *websocket.Conn, userID, documentID int64, permissionLevel s
 	}
 	return &Client{
 		Conn:            conn,
-		Send:            make(chan []byte, sendBuffer), // buffered channel for messages
-		Done:            make(chan struct{}),
-		UserID:          userID,
-		DocumentID:      documentID,
-		PermissionLevel: permissionLevel,
-		WriteWait:       writeWait,  // max time message can stay in the tcp buffer
-		PongWait:        pongWait,   // max time to wait for a pong response before considering the connection dead
-		PingPeriod:      pingPeriod, // how often to send pings to the client to keep the connection alive
-		ReadLimit:       readLimit,  // max size of incoming messages to prevent abuse
+		Send:            make(chan []byte, sendBuffer), // buffered channel for messages to be sent to the client
+		Done:            make(chan struct{}),           // channel to signal when the client connection is closed
+		UserID:          userID,                        // authenticated user ID associated with this client connection
+		DocumentID:      documentID,                    // document ID that this client is collaborating on
+		PermissionLevel: permissionLevel,               // permission level of the user ("editor", "viewer")
+		WriteWait:       writeWait,                     // max time message can stay in the tcp buffer
+		PongWait:        pongWait,                      // max time to wait for a pong response before considering the connection dead
+		PingPeriod:      pingPeriod,                    // how often to send pings to the client to keep the connection alive
+		ReadLimit:       readLimit,                     // max size of incoming messages to prevent abuse
 	}
 }
 
 func (c *Client) Close() {
-	c.closeOnce.Do(func() {
+	c.closeOnce.Do(func() { // runs only once
 		close(c.Done)
 		_ = c.Conn.Close()
 	})
+}
+
+func (c *Client) MarkUnregistered() bool {
+	first := false
+	c.unregisterOnce.Do(func() { // runs only once
+		first = true
+	})
+	return first
 }
 
 // push message payload to the client's send channel, non-blocking

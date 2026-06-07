@@ -12,7 +12,7 @@ import (
 )
 
 func (c *Client) ReadPump(h *Hub) {
-	defer h.Unregister(c)
+	defer h.Unregister(context.Background(), c)
 
 	c.Conn.SetReadLimit(c.ReadLimit)
 	_ = c.Conn.SetReadDeadline(time.Now().Add(c.PongWait))

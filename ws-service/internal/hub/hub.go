@@ -50,6 +50,7 @@ func (h *Hub) Register(ctx context.Context, client *Client) error {
 		h.rooms[client.DocumentID] = room
 		go h.consumeRoom(client.DocumentID, sub) // start consuming messages for this room
 	}
+
 	room.clients[client] = struct{}{}
 	h.mu.Unlock()
 
@@ -58,29 +59,38 @@ func (h *Hub) Register(ctx context.Context, client *Client) error {
 		"userId", client.UserID,
 		"permissionLevel", client.PermissionLevel,
 	)
+
+	if err := h.notifyParticipantEvent(ctx, client, protocol.MessageTypeParticipantJoined, "participant joined"); err != nil {
+		h.logger.Warn("failed to emit join event", "error", err)
+	}
+
 	return nil
 }
 
 // client exit from room
-func (h *Hub) Unregister(client *Client) {
-	h.mu.Lock()
+func (h *Hub) Unregister(ctx context.Context, client *Client) {
+	if !client.MarkUnregistered() {
+		return
+	}
+
+	h.mu.Lock() // to safely access and modify the rooms map
 	room, ok := h.rooms[client.DocumentID]
 	if !ok { // client's room not found (should not happen)
 		h.mu.Unlock()
 		client.Close()
 		return
 	}
-	if _, exists := room.clients[client]; !exists {
-		h.mu.Unlock()
-		client.Close()
-		return
-	}
+
 	delete(room.clients, client)
 	empty := len(room.clients) == 0
 	if empty {
 		delete(h.rooms, client.DocumentID)
 	}
 	h.mu.Unlock()
+
+	if err := h.notifyParticipantEvent(ctx, client, protocol.MessageTypeParticipantLeft, "participant left"); err != nil {
+		h.logger.Warn("failed to emit leave event", "error", err)
+	}
 
 	client.Close()
 
@@ -115,6 +125,38 @@ func (h *Hub) HandleClientEnvelope(ctx context.Context, client *Client, env prot
 		return err
 	}
 	// publish unmarshaled message to the broker
+	return h.broker.Publish(ctx, h.channel(client.DocumentID), payload)
+}
+
+func (h *Hub) notifyParticipantEvent(ctx context.Context, client *Client, typ protocol.MessageType, message string) error {
+	env := protocol.Envelope{
+		Type:       typ,
+		SenderID:   0, // system event, not a user message
+		DocumentID: client.DocumentID,
+		SentAt:     time.Now().UTC(),
+		Payload: protocol.MustPayload(protocol.ParticipantEventPayload{
+			DocumentID:      client.DocumentID,
+			UserID:          client.UserID,
+			PermissionLevel: client.PermissionLevel,
+			Message:         message,
+		}),
+	}
+
+	localBytes, err := json.Marshal(env)
+	if err != nil {
+		return err
+	}
+
+	h.broadcastLocal(client.DocumentID, localBytes)
+
+	wrapper := broker.EnvelopeMessage{
+		OriginNodeID: h.nodeID,
+		Envelope:     env,
+	}
+	payload, err := json.Marshal(wrapper)
+	if err != nil {
+		return err
+	}
 	return h.broker.Publish(ctx, h.channel(client.DocumentID), payload)
 }
 

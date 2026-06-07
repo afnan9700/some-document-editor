@@ -8,10 +8,12 @@ import (
 type MessageType string
 
 const (
-	MessageTypeChat       MessageType = "chat.message"
-	MessageTypeDocChange  MessageType = "doc.change"
-	MessageTypeConnection MessageType = "connection.ack"
-	MessageTypeError      MessageType = "error"
+	MessageTypeChat              MessageType = "chat.message"
+	MessageTypeDocChange         MessageType = "doc.change"
+	MessageTypeConnection        MessageType = "connection.ack"
+	MessageTypeParticipantJoined MessageType = "room.participant.joined"
+	MessageTypeParticipantLeft   MessageType = "room.participant.left"
+	MessageTypeError             MessageType = "error"
 )
 
 type Envelope struct {

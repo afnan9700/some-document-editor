@@ -91,7 +91,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// send initial connection acknowledgment with user and document info
+	// send initial connection acknowledgment with user and document info to client
 	ack := protocol.Envelope{
 		Type: protocol.MessageTypeConnection,
 		Payload: protocol.MustPayload(protocol.ConnectionAckPayload{
