@@ -1,6 +1,7 @@
 spring:
   application:
     name: collab-editor
+    internal-token: ${INTERNAL_WORKER_TOKEN:supersecret}
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/doc-editor}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}

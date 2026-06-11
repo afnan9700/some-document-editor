@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -14,6 +15,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.somedomain.collab_editor.auth.InternalAuthFilter;
 import com.somedomain.collab_editor.auth.JwtAuthFilter;
 import com.somedomain.collab_editor.auth.JwtAuthenticationEntryPoint;
 
@@ -22,17 +24,38 @@ public class SecurityConfig {
 
     private final JwtAuthenticationEntryPoint unauthorizedHandler;
     private final JwtAuthFilter jwtAuthFilter;
+    private final InternalAuthFilter internalAuthFilter;
     // private final CustomUserDetailsService customUserDetailsService;
     // private final PasswordEncoder passwordEncoder;
 
-    public SecurityConfig(JwtAuthenticationEntryPoint unauthorizedHandler, JwtAuthFilter jwtAuthFilter) {
+    public SecurityConfig(
+        JwtAuthenticationEntryPoint unauthorizedHandler, 
+        JwtAuthFilter jwtAuthFilter,
+        InternalAuthFilter internalAuthFilter) {
         this.unauthorizedHandler = unauthorizedHandler;
         this.jwtAuthFilter = jwtAuthFilter;
+        this.internalAuthFilter = internalAuthFilter;
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    @Order(1)
+    public SecurityFilterChain internalSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .securityMatcher("/internal/**")
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedHandler))
+            .authorizeHttpRequests(auth -> auth
+                .anyRequest().hasRole("WORKER")
+            )
+            .addFilterBefore(internalAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
+    public SecurityFilterChain userSecurityFilterChain(HttpSecurity http) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
@@ -46,7 +69,6 @@ public class SecurityConfig {
 
         return http.build();
     }
-
     // @Bean
     // public UserDetailsService userDetailsService() {
     //     return customUserDetailsService;
