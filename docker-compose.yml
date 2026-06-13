@@ -1,5 +1,5 @@
 services:
-  # 1. Database Service
+  # Database Service
   db:
     image: postgres:15-alpine
     container_name: app-postgres
@@ -72,7 +72,28 @@ services:
       ws-service:
         condition: service_started
 
-  # 3. Frontend Service
+  collaboration-state-worker:
+    build:
+      context: ./collaboration-state-worker
+      dockerfile: Dockerfile
+    container_name: app-collaboration-state-worker
+    restart: always
+    env_file:
+      - .env
+    environment:
+      PORT: 8082
+      SPRINGBOOT_BASE_URL: http://localhost:8080
+    ports:
+      - "8082:8082"
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    expose:
+      - "8082"
+
+  #  Frontend Service
   frontend:
     build: 
       context: ./frontend
