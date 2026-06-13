@@ -1,4 +1,4 @@
-package com.somedomain.collab_editor.internal.documentsyncworker;
+package com.somedomain.collab_editor.internal.collaborationstateworker;
 
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;

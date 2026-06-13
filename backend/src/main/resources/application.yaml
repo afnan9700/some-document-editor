@@ -1,7 +1,7 @@
 spring:
   application:
     name: collab-editor
-    internal-token: ${INTERNAL_WORKER_TOKEN:supersecret}
+    springboot-bearer-token: ${SPRINGBOOT_BEARER_TOKEN:thetokenrequiredbyworker}
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/doc-editor}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
@@ -20,7 +20,12 @@ spring:
       timeout: 2000ms
 jwt:
   access-token-expiration-ms: 900000       # 15 minutes
-  refresh-token-expiration-ms: 604800000   # 7 days
-  # Do not provide a default fallback for production cryptographic keys
+  refresh-token-expiration-ms: 604800000   # 7 days=
   private-key: ${JWT_PRIVATE_KEY}
   public-key: ${JWT_PUBLIC_KEY}
+
+router:
+  worker-bearer-token: ${WORKER_BEARER_TOKEN:thetokenrequiredbyspringboot}
+  workers:
+    - id: collab-worker-0
+      base-url: http://localhost:3000

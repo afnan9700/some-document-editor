@@ -11,6 +11,9 @@
 		},
 		{
 			"path": "ws-service"
+		},
+		{
+			"path": "collaboration-state-worker"
 		}
 	],
 	"settings": {

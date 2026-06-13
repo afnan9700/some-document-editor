@@ -35,3 +35,6 @@ export function loadConfig(): AppConfig {
     textFieldName: requiredEnv("DOC_TEXT_FIELD_NAME", "markdown"),
   };
 }
+// for the purposes of sanity:
+// SPRINGBOOT_BEARER_TOKEN -> token required by worker to make requests to springboot
+// WORKER_BEARER_TOKEN -> token required by springboot to make requests to worker

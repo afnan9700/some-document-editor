@@ -24,7 +24,8 @@ public class InternalAuthFilter extends OncePerRequestFilter {
     private final String internalToken;
     private static final Logger log = LoggerFactory.getLogger(InternalAuthFilter.class);
 
-    public InternalAuthFilter(@Value("${spring.application.internal-token}") String internalToken) {
+    // there could be some confusion regarding token naming here, but please tolerate    
+    public InternalAuthFilter(@Value("${spring.application.springboot-bearer-token}") String internalToken) {
         this.internalToken = internalToken;
     }
 
