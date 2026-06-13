@@ -108,7 +108,7 @@ export class DocumentRuntime {
     if (this.shutdownCompleted) return;
     this.shutdownCompleted = true;
     this.stopAutoPersistence();
-    await this.persistToSpringBoot().catch((error: unknown) => {
+    await this.springClient.syncDocument(this.documentId, this.content, true).catch((error: unknown) => {
       this.logger.error(`final persistence failed for document ${this.documentId}`, error);
     });
     this.doc.destroy();

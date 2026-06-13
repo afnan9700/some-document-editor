@@ -108,6 +108,23 @@ public class LockService {
     }
 
     @Transactional
+    public void releaseCollaborativeLock(Long documentId) {
+        Optional<DocumentLock> existing = lockRepository.findByDocumentId(documentId);
+        if (existing.isEmpty()) {
+            return;
+        }
+
+        DocumentLock current = existing.get();
+        if (isExpired(current)) {
+            lockRepository.delete(current);
+            return;
+        }
+
+        lockRepository.delete(current);
+        log.info("Worker released collaborative lock for document {}", documentId);
+    }
+
+    @Transactional
     public DocumentLock refreshLock(Document document, User user, Duration ttl) {
         if (ttl == null) {
             ttl = DEFAULT_LOCK_TTL;
