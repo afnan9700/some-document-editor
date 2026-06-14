@@ -10,7 +10,6 @@ import { ApiService } from '../core/api.service';
 export class WebSocketTicketService {
   private api = inject(ApiService);
     
-
   createTicket(documentId: number): Observable<WebSocketTicketResponse> {
     if (!Number.isInteger(documentId) || documentId <= 0) {
       throw new Error(`Invalid documentId: ${documentId}`);
@@ -21,6 +20,7 @@ export class WebSocketTicketService {
       map((response) => ({
         ticket: response.ticket,
         expiresAt: response.expiresAt,
+        content: response.content
       })),
     );
   }

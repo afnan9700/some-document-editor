@@ -2,7 +2,8 @@ package com.somedomain.collab_editor.websocketticket;
 
 import java.time.Instant;
 
-public record WebSocketTicketResponse(
+public record WebSocketTicketWithContentResponse(
     String ticket,
-    Instant expiresAt
+    Instant expiresAt,
+    String content
 ) {}
