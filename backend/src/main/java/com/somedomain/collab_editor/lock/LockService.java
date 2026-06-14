@@ -1,6 +1,7 @@
 package com.somedomain.collab_editor.lock;
 
 import com.somedomain.collab_editor.document.Document;
+import com.somedomain.collab_editor.document.DocumentRepository;
 import com.somedomain.collab_editor.auth.User;
 import com.somedomain.collab_editor.common.exceptions.AppException;
 import com.somedomain.collab_editor.permission.DocumentPermissionRepository;
@@ -23,11 +24,14 @@ public class LockService {
 
     private final DocumentLockRepository lockRepository;
     private final DocumentPermissionRepository permissionRepository;
+    private final DocumentRepository documentRepository;
 
     public LockService(DocumentLockRepository lockRepository,
-                       DocumentPermissionRepository permissionRepository) {
+                       DocumentPermissionRepository permissionRepository,
+                    DocumentRepository documentRepository) {
         this.lockRepository = lockRepository;
         this.permissionRepository = permissionRepository;
+        this.documentRepository =  documentRepository;
     }
 
     @Transactional
@@ -219,5 +223,48 @@ public class LockService {
 
     private boolean isExpired(DocumentLock lock) {
         return lock.getExpiresAt() != null && lock.getExpiresAt().isBefore(Instant.now());
+    }
+
+    // this thing probably needs a rework
+    @Transactional
+    public DocumentLock acquireCollaborativeLock(Long documentId) {
+        Optional<DocumentLock> existing = lockRepository.findByDocumentId(documentId);
+
+        if (existing.isPresent()) {
+            DocumentLock current = existing.get();
+
+            if (isExpired(current)) {
+                lockRepository.delete(current);
+                log.info("Removed expired lock for doc {}", documentId);
+                return createSystemCollaborativeLock(documentId);
+            }
+
+            if (current.getLockType() == LockType.EXCLUSIVE) {
+                throw new AppException("Cannot acquire collaborative lock: Document is currently locked exclusively.", 409);
+            }
+
+            current.setExpiresAt(Instant.now().plus(DEFAULT_LOCK_TTL));
+            log.debug("Worker refreshed existing COLLABORATIVE lock for doc {}", documentId);
+            return lockRepository.save(current);
+        }
+
+        return createSystemCollaborativeLock(documentId);
+    }
+
+    private DocumentLock createSystemCollaborativeLock(Long documentId) {
+        DocumentLock newLock = new DocumentLock();
+        
+        // lazyloading object cuz i made the decision of using entity refrences instead of Long ids for whatever reason
+        Document documentProxy = documentRepository.getReferenceById(documentId);
+        newLock.setDocument(documentProxy);
+        
+        newLock.setLockType(LockType.COLLABORATIVE);
+        newLock.setLockedAt(Instant.now());
+        newLock.setExpiresAt(Instant.now().plus(DEFAULT_LOCK_TTL));
+        newLock.setLockedByUser(null); 
+
+        DocumentLock saved = lockRepository.save(newLock);
+        log.info("Worker acquired new COLLABORATIVE lock for document {}", documentId);
+        return saved;
     }
 }
