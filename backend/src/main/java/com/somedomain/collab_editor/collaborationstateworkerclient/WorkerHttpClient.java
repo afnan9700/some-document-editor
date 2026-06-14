@@ -25,7 +25,7 @@ public class WorkerHttpClient {
         this.routerProperties = routerProperties;
     }
 
-    public ProxyResponse put(String documentId, String path, byte[] requestBody) {
+    public ProxyResponse put(String documentId, String path, Object requestBody) {
         URI uri = workerUri(documentId, path);
 
         try {

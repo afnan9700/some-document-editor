@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("api/collab-session/")
 public class DocumentWorkerProxyController {
 
+    public record InitializeDocumentRequest(String content) {}
+
     private final DocumentWorkerProxyService proxyService;
 
     public DocumentWorkerProxyController(DocumentWorkerProxyService proxyService) {
@@ -14,11 +16,8 @@ public class DocumentWorkerProxyController {
     }
 
     @PutMapping("/{documentId}/init")
-    public ResponseEntity<byte[]> initializeDocument(
-            @PathVariable String documentId,
-            @RequestBody(required = false) byte[] body
-    ) {
-        return proxyService.initializeDocument(documentId, body);
+    public ResponseEntity<byte[]> initializeDocument(@PathVariable Long documentId) {
+        return proxyService.initializeDocument(documentId);
     }
 
     @PutMapping("/{documentId}/sync")
