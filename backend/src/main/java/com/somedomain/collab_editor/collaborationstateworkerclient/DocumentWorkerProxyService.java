@@ -1,10 +1,15 @@
 package com.somedomain.collab_editor.collaborationstateworkerclient;
 
+import java.nio.charset.StandardCharsets;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import com.somedomain.collab_editor.collaborationstateworkerclient.DocumentWorkerProxyController.InitializeDocumentRequest;
 import com.somedomain.collab_editor.document.DocumentRepository;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.somedomain.collab_editor.document.Document;
 import com.somedomain.collab_editor.lock.LockService;
 
@@ -14,6 +19,9 @@ public class DocumentWorkerProxyService {
     private final WorkerHttpClient workerHttpClient;
     private final LockService lockService;
     private final DocumentRepository documentRepository;
+    private ObjectMapper objectMapper;
+
+    public record InitializeDocumentRequest(String content) {}
 
     public DocumentWorkerProxyService(WorkerHttpClient workerHttpClient, LockService lockService, DocumentRepository documentRepository) {
         this.workerHttpClient = workerHttpClient;
@@ -21,14 +29,14 @@ public class DocumentWorkerProxyService {
         this.documentRepository = documentRepository;
     }
 
-    // received during a session initialization (the request body contains document content. though its irrelevent to springboot)
+    
     public ResponseEntity<byte[]> initializeDocument(Long documentId) {
         Document document = documentRepository.findByIdWithContent(documentId)
                 .orElse(null);
 
         if (document == null) {
             return ResponseEntity.status(404)
-                    .body("{\"error\":\"document_not_found\"}".getBytes());
+                    .body("{\"error\":\"document_not_found\"}".getBytes(StandardCharsets.UTF_8));
         }
 
         String content = document.getContentEntity().getContent();
@@ -40,10 +48,37 @@ public class DocumentWorkerProxyService {
                 requestBody
         );
 
-        // this can be done in a better way so mayeb change it later
         lockService.acquireCollaborativeLock(Long.valueOf(documentId));
 
-        return response.toResponseEntity();
+        ResponseEntity<byte[]> workerResponse = response.toResponseEntity();
+
+        try {
+            JsonNode workerJson = null;
+            byte[] workerBody = workerResponse.getBody();
+
+            if (workerBody != null && workerBody.length > 0) {
+                workerJson = objectMapper.readTree(workerBody);
+            }
+
+            ObjectNode finalBody = objectMapper.createObjectNode();
+
+            if (workerJson != null && workerJson.isObject()) {
+                finalBody.setAll((ObjectNode) workerJson);
+            }
+
+            finalBody.put("content", content);
+
+            byte[] finalBytes = objectMapper.writeValueAsBytes(finalBody);
+
+            return ResponseEntity.status(workerResponse.getStatusCode())
+                    .headers(workerResponse.getHeaders())
+                    .body(finalBytes);
+
+        } catch (Exception e) {
+            // Fallback if something goes wrong while merging JSON
+            return ResponseEntity.status(500)
+                    .body("{\"error\":\"failed_to_build_response\"}".getBytes(StandardCharsets.UTF_8));
+        }
     }
 
     // received whenever a new client joins

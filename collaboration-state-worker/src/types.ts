@@ -20,12 +20,6 @@ export interface EnvelopeMessage {
   envelope: Envelope;
 }
 
-export interface ChatHistoryEntry {
-  receivedAt: string;
-  originNodeId: string;
-  envelope: Envelope;
-}
-
 export interface ParticipantEventPayload {
   documentId: number;
   userId: number;
@@ -38,19 +32,13 @@ export interface WorkerSyncResponse {
   documentId: number;
   userCount: number;
   content: string;
-  chatHistory: ChatHistoryEntry[];
+  chatHistory: Envelope[];
   participantMap: Record<string, string>;
   yjsStateBase64: string;
 }
 
 export interface InitDocumentRequestBody {
   content: string;
-}
-
-export interface SyncDocumentRequestBody {
-  // Intentionally left open for future compatibility.
-  // The worker currently only needs documentId from the route.
-  [key: string]: unknown;
 }
 
 export interface SpringSyncRequestBody {

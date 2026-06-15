@@ -41,6 +41,9 @@ export interface ParticipantEventPayload {
   message: string;
 }
 
+export interface ChatMessagePayload {
+  content: string;
+}
 
 export type ConnectionState =
   | 'idle'

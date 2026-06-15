@@ -1,6 +1,5 @@
 import * as Y from "yjs";
 import type {
-  ChatHistoryEntry,
   Envelope,
   ParticipantEventPayload,
   WorkerSyncResponse,
@@ -14,7 +13,7 @@ export class DocumentRuntime {
   public userCount = 1;
   public content = "";
   public readonly doc: Y.Doc;
-  public readonly chatHistory: ChatHistoryEntry[] = [];
+  public readonly chatHistory: Envelope[] = [];
   public readonly participantMap = new Map<number, string>();
 
   private readonly yText: Y.Text;
@@ -74,12 +73,9 @@ export class DocumentRuntime {
     this.content = this.yText.toString();
   }
 
-  addChatMessage(originNodeId: string, envelope: Envelope): void {
-    this.chatHistory.push({
-      receivedAt: nowIso(),  // might remove this cuz the sentAt time will be included in envelope and payload
-      originNodeId,
-      envelope,
-    });
+  // the original node id is here because it keeps some other parts from breaking
+  addChatMessage(originNodeId: string, envelope: Envelope): void { 
+    this.chatHistory.push(envelope);
   }
 
   // for user count tracking to unsubsctibe from the redis channel
@@ -125,7 +121,7 @@ export class DocumentRuntime {
       documentId: this.documentId,
       userCount: this.userCount,
       content: this.content,
-      chatHistory: [...this.chatHistory],
+      chatHistory: this.chatHistory,
       participantMap: Object.fromEntries(this.participantMap.entries()),
       yjsStateBase64: Buffer.from(Y.encodeStateAsUpdate(this.doc)).toString("base64"),
     };
