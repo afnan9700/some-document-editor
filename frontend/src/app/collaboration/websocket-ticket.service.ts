@@ -19,8 +19,7 @@ export class WebSocketTicketService {
     return this.api.post<WebSocketTicketResponse>(url, {}).pipe(
       map((response) => ({
         ticket: response.ticket,
-        expiresAt: response.expiresAt,
-        content: response.content
+        expiresAt: response.expiresAt
       })),
     );
   }

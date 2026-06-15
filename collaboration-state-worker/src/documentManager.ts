@@ -53,7 +53,6 @@ export class DocumentManager {
     return runtime.snapshot();
   }
 
-
   // for every message received on a redis channel
   async handleRedisMessage(channel: string, rawMessage: string): Promise<void> {
     // doc id is included in the channel name
@@ -113,10 +112,12 @@ export class DocumentManager {
     switch (envelope.type as MessageType) {
       case "room.participant.joined":
         runtime.incrementUserCount();
+        runtime.addParticipant(envelope.payload);
         this.logger.debug(`participant joined`, { documentId: runtime.documentId, userCount: runtime.userCount, channel, originNodeId });
         return;
       case "room.participant.left":
         runtime.decrementUserCount();
+        runtime.removeParticipant(envelope.payload);
         this.logger.debug(`participant left`, { documentId: runtime.documentId, userCount: runtime.userCount, channel, originNodeId });
         return;
       case "doc.change":
@@ -135,7 +136,6 @@ export class DocumentManager {
         this.logger.warn(`unknown envelope type`, { documentId: runtime.documentId, type: envelope.type, channel, rawMessage });
     }
   }
-
 
   private async subscribeToDocument(documentId: number): Promise<void> {
     const channel = this.documentChannel(documentId);

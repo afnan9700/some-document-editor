@@ -1,5 +1,10 @@
 import * as Y from "yjs";
-import type { ChatHistoryEntry, Envelope, WorkerSyncResponse } from "./types.js";
+import type {
+  ChatHistoryEntry,
+  Envelope,
+  ParticipantEventPayload,
+  WorkerSyncResponse,
+} from "./types.js";
 import { Logger } from "./logger.js";
 import { SpringClient } from "./springClient.js";
 import { base64ToUint8Array, isProbablyBase64, nowIso, safeJsonStringify } from "./utils.js";
@@ -10,6 +15,7 @@ export class DocumentRuntime {
   public content = "";
   public readonly doc: Y.Doc;
   public readonly chatHistory: ChatHistoryEntry[] = [];
+  public readonly participantMap = new Map<number, string>();
 
   private readonly yText: Y.Text;
   private persistTimer?: NodeJS.Timeout | undefined;
@@ -87,6 +93,27 @@ export class DocumentRuntime {
     return this.userCount <= 0;
   }
 
+  // track participant presence for snapshot responses
+  addParticipant(payload: unknown): void {
+    const participant = this.parseParticipantEventPayload(payload);
+    if (!participant) {
+      this.logger.warn(`ignored invalid participant join payload for document ${this.documentId}`, safeJsonStringify(payload));
+      return;
+    }
+
+    this.participantMap.set(participant.userId, participant.username);
+  }
+
+  removeParticipant(payload: unknown): void {
+    const participant = this.parseParticipantEventPayload(payload);
+    if (!participant) {
+      this.logger.warn(`ignored invalid participant leave payload for document ${this.documentId}`, safeJsonStringify(payload));
+      return;
+    }
+
+    this.participantMap.delete(participant.userId);
+  }
+
   // for periodic persistence
   async persistToSpringBoot(): Promise<void> {
     await this.springClient.syncDocument(this.documentId, this.content);
@@ -97,8 +124,9 @@ export class DocumentRuntime {
     return {
       documentId: this.documentId,
       userCount: this.userCount,
-      content: this.content,  
+      content: this.content,
       chatHistory: [...this.chatHistory],
+      participantMap: Object.fromEntries(this.participantMap.entries()),
       yjsStateBase64: Buffer.from(Y.encodeStateAsUpdate(this.doc)).toString("base64"),
     };
   }
@@ -153,5 +181,24 @@ export class DocumentRuntime {
     // }
 
     return null;
+  }
+
+  private parseParticipantEventPayload(payload: unknown): ParticipantEventPayload | null {
+    if (payload == null || typeof payload !== "object") return null;
+
+    const record = payload as Record<string, unknown>;
+    const userId = record.userId;
+    const username = record.username;
+
+    if (typeof userId !== "number") return null;
+    if (typeof username !== "string") return null;
+
+    return {
+      documentId: typeof record.documentId === "number" ? record.documentId : this.documentId,
+      userId,
+      username,
+      permissionLevel: typeof record.permissionLevel === "string" ? record.permissionLevel : "",
+      message: typeof record.message === "string" ? record.message : "",
+    };
   }
 }

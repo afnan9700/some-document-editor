@@ -128,7 +128,7 @@ export class MarkdownYjsEditorComponent implements AfterViewInit, OnDestroy {
   }));
 
   readonly contentChange = output<string>();
-  readonly yjsUpdate = output<Uint8Array>();
+  readonly yjsUpdate = output<Uint8Array>();  // main
   readonly modeChange = output<MarkdownEditorMode>();
 
   readonly activeMode = signal<MarkdownEditorMode>('source');

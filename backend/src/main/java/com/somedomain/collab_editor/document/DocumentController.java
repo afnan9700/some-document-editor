@@ -22,7 +22,7 @@ import com.somedomain.collab_editor.lock.LockService;
 import com.somedomain.collab_editor.lock.LockType;
 import com.somedomain.collab_editor.util.SecurityUtils;
 import com.somedomain.collab_editor.websocketticket.WebSocketTicketService;
-import com.somedomain.collab_editor.websocketticket.WebSocketTicketWithContentResponse;
+import com.somedomain.collab_editor.websocketticket.WebSocketTicketResponse;
 
 @RestController
 @RequestMapping("/api/docs")
@@ -169,7 +169,7 @@ public class DocumentController {
     }
 
     @PostMapping("/{id}/ws-ticket")
-    public ResponseEntity<WebSocketTicketWithContentResponse> createTicket(@PathVariable Long id) {
+    public ResponseEntity<WebSocketTicketResponse> createTicket(@PathVariable Long id) {
         return ResponseEntity.ok(
             ticketService.createTicketWithContent(id, SecurityUtils.getCurrentUser())
         );

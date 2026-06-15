@@ -18,7 +18,7 @@ export class CollaborationWebSocketService {
   private readonly documentRef = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
 
-  private socket: WebSocket | null = null;
+  private socket: WebSocket | null = null;  
   private requestedDocumentId: number | null = null;
 
   private readonly _state = signal<ConnectionState>('idle');
@@ -37,7 +37,7 @@ export class CollaborationWebSocketService {
   readonly isConnected = computed(() => this._state() === 'open');
 
   private readonly inboundSubject = new Subject<CollaborationEnvelope>();
-  readonly inbound$ = this.inboundSubject.asObservable();
+  readonly inbound$ = this.inboundSubject.asObservable();  // to read received messages
 
   constructor() {
     this.destroyRef.onDestroy(() => {
@@ -146,6 +146,7 @@ export class CollaborationWebSocketService {
     this._state.set('closed');
   }
 
+  // to send messages
   send<TPayload>(envelope: CollaborationEnvelope<TPayload>): void {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       throw new Error('WebSocket is not open');

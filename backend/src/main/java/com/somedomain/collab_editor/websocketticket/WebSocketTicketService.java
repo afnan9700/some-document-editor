@@ -12,12 +12,9 @@ import org.springframework.security.access.AccessDeniedException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 import com.somedomain.collab_editor.auth.User;
-import com.somedomain.collab_editor.document.Document;
-import com.somedomain.collab_editor.document.DocumentRepository;
 import com.somedomain.collab_editor.permission.DocumentPermission;
 import com.somedomain.collab_editor.permission.DocumentPermissionRepository;
 import com.somedomain.collab_editor.permission.PermissionLevel;
@@ -28,15 +25,13 @@ public class WebSocketTicketService {
 
     private static final Duration TICKET_TTL = Duration.ofMinutes(1);
 
-    private final DocumentRepository documentRepository;
     private final DocumentPermissionRepository permissionRepository;
+
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
-    public WebSocketTicketWithContentResponse createTicketWithContent(Long documentId, User principalUser) {
-        Document document = documentRepository.findByIdWithContent(documentId)
-                .orElseThrow(() -> new EntityNotFoundException("Document not found"));
+    public WebSocketTicketResponse createTicketWithContent(Long documentId, User principalUser) {
 
         PermissionLevel permissionLevel = resolvePermission(documentId, principalUser.getId());
         if (permissionLevel == null) {
@@ -70,11 +65,9 @@ public class WebSocketTicketService {
         // handle unlikely collision
         if (!Boolean.TRUE.equals(stored)) {
             throw new IllegalStateException("Ticket collision; retry");
-        }
+        } 
 
-        String content = document.getContentEntity().getContent(); 
-
-        return new WebSocketTicketWithContentResponse(ticket, expiresAt, content);
+        return new WebSocketTicketResponse(ticket, expiresAt);
     }
 
     private PermissionLevel resolvePermission(Long documentId, Long userId) {

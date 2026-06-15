@@ -26,11 +26,20 @@ export interface ChatHistoryEntry {
   envelope: Envelope;
 }
 
+export interface ParticipantEventPayload {
+  documentId: number;
+  userId: number;
+  username: string;
+  permissionLevel: string;
+  message: string;
+}
+
 export interface WorkerSyncResponse {
   documentId: number;
   userCount: number;
   content: string;
   chatHistory: ChatHistoryEntry[];
+  participantMap: Record<string, string>;
   yjsStateBase64: string;
 }
 

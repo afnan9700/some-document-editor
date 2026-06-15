@@ -19,7 +19,6 @@ export interface CollaborationEnvelope<TPayload = unknown> {
 export interface WebSocketTicketResponse {
   ticket: string;
   expiresAt: string;
-  content: string;
 }
 
 export interface ConnectionAckPayload {
