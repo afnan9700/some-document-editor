@@ -32,6 +32,31 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'documents/:id/open',
+        loadComponent: () =>
+          import('./documents/document-entry-page.component').then(
+            (m) => m.DocumentEntryGatePageComponent,
+          ),
+      },
+      {
+        path: 'documents/:id/edit',
+        loadComponent: () =>
+          import('./document-workspace/document-workspace-page.component').then(
+            (m) => m.DocumentWorkspacePageComponent,
+          ),
+      },
+      {
+        path: 'documents/:id/readonly',
+        loadComponent: () =>
+          import('./document-workspace/document-workspace-page-readonly.component').then(
+            (m) => m.DocumentWorkspaceReadonlyPageComponent,
+          ),
+      },
+      // {
+      //   path: 'documents/:id/collaborate',
+      //   loadComponent: () => ,
+      // },
+      {
         path: 'requests',
         loadComponent: () =>
           import('./document-sharing/document-requests-page.component').then((m) => m.RequestsPageComponent),

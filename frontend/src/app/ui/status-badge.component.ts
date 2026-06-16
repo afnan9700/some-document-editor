@@ -1,7 +1,6 @@
 import { Component, ChangeDetectionStrategy, input, computed } from '@angular/core';
 
-// We strictly type the possible states to avoid unpredictable 'any' or string errors.
-export type DocStatus = 'owned' | 'shared' | 'locked' | 'read-only' | 'pending';
+export type DocStatus = 'owned' | 'shared: Editable' | 'shared: Readonly' | 'locked' | 'read-only' | 'pending';
 
 @Component({
   selector: 'app-status-badge',
@@ -20,7 +19,8 @@ export class StatusBadgeComponent {
   badgeClass = computed(() => {
     switch(this.status()) {
       case 'owned': return 'badge-neutral';
-      case 'shared': return 'badge-info';
+      case 'shared: Editable': return 'badge-info';
+      case 'shared: Readonly': return 'badge-info';
       case 'locked': return 'badge-error';
       case 'read-only': return 'badge-warning';
       case 'pending': return 'badge-primary';

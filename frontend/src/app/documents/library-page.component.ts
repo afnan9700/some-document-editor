@@ -234,7 +234,12 @@ export class LibraryPageComponent implements OnInit {
   }
 
   mapPermissionToStatus(permission: DocPermission): DocStatus {
-    return permission === 'OWNER' ? 'owned' : 'shared';
+    if (permission == 'OWNER') 
+      return 'owned';
+    else if (permission == 'EDITOR')
+      return 'shared: Editable';
+    else (permission == 'VIEWER')
+      return 'shared: Readonly';
   }
 
   openCreateModal(): void {
@@ -268,7 +273,7 @@ export class LibraryPageComponent implements OnInit {
       .subscribe({
         next: (newDoc: DocumentSummary) => {
           this.closeCreateModal();
-          void this.router.navigate(['/documents', newDoc.documentId]);
+          void this.router.navigate(['/documents', newDoc.documentId, 'open']);
         },
         error: () => {
           // toast or error state
@@ -277,7 +282,11 @@ export class LibraryPageComponent implements OnInit {
   }
 
   handleOpenDocument(id: string): void {
-    void this.router.navigate(['/documents', id]);
+    void this.router.navigate(['/documents', id, 'open']);
+  }
+
+  handleCollaborateDocument(id: string): void {
+    void this.router.navigate(['/documents', id, 'collaborate']);
   }
 
   handleShareDocument(id: string): void {
