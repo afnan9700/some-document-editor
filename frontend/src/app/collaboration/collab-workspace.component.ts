@@ -236,7 +236,21 @@ export class CollabWorkspaceComponent implements OnInit {
       this.routeChatMessages();
 
       // 5. Supply the plain-text bootstrap and switch to active.
-      this.initialSnapshot.set(response.content);
+      // this.initialSnapshot.set(response.content);
+
+
+      // !!! A VERY HAPHAZARD TEMPORARY FIX !!! 
+      const responseAgain: WorkerSyncResponse = await firstValueFrom(
+        this.workerService.syncDocument(this.documentId()),
+      );
+      this.userCount.set(responseAgain.userCount - 1); // because the frontend will listen to its own participant joining message
+      this.usernames.set(parseParticipantMap(responseAgain.participantMap));
+      this.remoteUpdates$.next(decodeBase64ToUint8(responseAgain.yjsStateBase64));
+      for (const entry of responseAgain.chatHistory) {
+        this.chatMessages$.next(entry);
+      }
+      // ONLY TEMPORARY
+
       this.phase.set('active');
 
     } catch (err) {
