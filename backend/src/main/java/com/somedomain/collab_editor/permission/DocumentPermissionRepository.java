@@ -14,6 +14,9 @@ import com.somedomain.collab_editor.document.DocumentSummaryWithContentDto;
 
 public interface DocumentPermissionRepository extends JpaRepository<DocumentPermission, Long> {
     Optional<DocumentPermission> findByDocumentAndUser(Document document, User user);
+    
+    Optional<DocumentPermission> findByDocument_IdAndUser_Id(Long documentId, Long userId);
+    boolean existsByDocument_IdAndUser_Id(Long documentId, Long userId);
 
     List<DocumentPermission> findByUser(User user);
 

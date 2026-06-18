@@ -39,8 +39,12 @@ export interface DocumentSaveResponse {
   version: number;
 }
 
+export type DocumentLockType = 'EXCLUSIVE' | 'COLLABORATIVE';
+
 export interface DocumentLockDto {
   documentId: number;
-  lockedByUsername: string;
+  lockType: DocumentLockType;
+  lockedByUserId: number | null;
+  lockedByUsername: string | null;
   expiresAt: string;
 }

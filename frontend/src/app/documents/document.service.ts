@@ -3,7 +3,7 @@ import { inject, Injectable, signal, computed } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap, switchMap } from 'rxjs/operators';
 import { ApiService } from '../core/api.service';
-import type { DocumentSummary, CreateDocRequest, DocumentSaveResponse, Document, DocumentLockDto } from './document.models';
+import type { DocumentSummary, CreateDocRequest, DocumentSaveResponse, Document, DocumentLockDto, DocumentLockType } from './document.models';
 
 @Injectable({ providedIn: 'root' })
 export class DocumentService {
@@ -55,13 +55,30 @@ export class DocumentService {
   }
 
   lockDocument(
-    documentId: number, 
+    documentId: number,
+    lockType: DocumentLockType = 'EXCLUSIVE',
     ttlSeconds: number = this.defaultLockTtlSeconds
   ): Observable<void> {
     return this.api.post<void>(
       `/api/docs/${documentId}/lock`,
       {},
-      { ttlseconds: String(ttlSeconds) },
+      {
+        lockType,
+        ttlSeconds: String(ttlSeconds),
+      }
+    );
+  }
+
+  switchLockToCollaborative(
+    documentId: number,
+    ttlSeconds: number = this.defaultLockTtlSeconds
+  ): Observable<void> {
+    return this.api.post<void>(
+      `/api/docs/${documentId}/lock/collaborative`,
+      {},
+      {
+        ttlSeconds: String(ttlSeconds),
+      }
     );
   }
 
@@ -72,7 +89,9 @@ export class DocumentService {
     return this.api.post<void>(
       `/api/docs/${documentId}/lock/refresh`,
       {},
-      { ttlseconds: String(ttlSeconds) },
+      {
+        ttlSeconds: String(ttlSeconds),
+      }
     );
   }
 
@@ -80,7 +99,7 @@ export class DocumentService {
     documentId: number,
     ttlSeconds: number = this.defaultLockTtlSeconds,
   ): Observable<Document> {
-    return this.lockDocument(documentId, ttlSeconds).pipe(
+    return this.lockDocument(documentId, 'EXCLUSIVE', ttlSeconds).pipe(
       switchMap(() => this.getDocument(documentId)),
     );
   }

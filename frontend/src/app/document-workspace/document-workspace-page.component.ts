@@ -92,6 +92,7 @@ export class DocumentWorkspacePageComponent {
   private readonly router = inject(Router);
   private readonly documents = inject(DocumentService);
 
+  // document specific signals
   readonly title = signal('Untitled document');
   readonly content = signal('');
   readonly savedContent = signal('');
@@ -106,16 +107,20 @@ export class DocumentWorkspacePageComponent {
   readonly lockHeld = signal(false);
   readonly activeDocumentId = signal<number | null>(null);
 
+  // lock related signals
   readonly lockModalOpen = signal(false);
   readonly lockedByUsername = signal<string | null>(null);
 
+  // permissions derived signals
   readonly canEdit = computed(
     () => this.permission() === 'OWNER' || this.permission() === 'EDITOR',
   );
   readonly isReadonly = computed(() => !this.canEdit());
-  readonly dirty = computed(() => this.content() !== this.savedContent());
-  readonly ariaLabel = signal('Document editor');
 
+  // save state derived signals
+  readonly dirty = computed(() => this.content() !== this.savedContent());
+
+  // route parameter signal
   readonly routeDocumentId = toSignal(
     this.route.paramMap.pipe(
       map((params) => {
@@ -132,7 +137,10 @@ export class DocumentWorkspacePageComponent {
     { initialValue: null as number | null },
   );
 
+  readonly ariaLabel = signal('Document editor');
+
   constructor() {
+    // document load and lock acquisition
     effect((onCleanup) => {
       const documentId = this.routeDocumentId();
 
@@ -159,10 +167,15 @@ export class DocumentWorkspacePageComponent {
         }),
         switchMap((lock) => {
           if (lock && lock.lockedByUsername !== this.auth.currentUser?.username) {
-            this.lockedByUsername.set(lock.lockedByUsername);
-            this.lockModalOpen.set(true);
-            this.loading.set(false);
-            return of(null);
+            if (lock.lockType === 'EXCLUSIVE') {
+              this.lockedByUsername.set(lock.lockedByUsername);
+              this.lockModalOpen.set(true);
+              this.loading.set(false);
+              return of(null);
+            }
+            else if (lock.lockType === 'COLLABORATIVE') {
+              // pending
+            }
           }
 
           return this.documents.openDocument(documentId);
@@ -235,11 +248,13 @@ export class DocumentWorkspacePageComponent {
     });
   }
 
+  // event handler for content change event
   handleContentChange(value: string): void {
     this.content.set(value);
     this.saveError.set(null);
   }
 
+  // event handler for readonly mode toggle (in lock modal)
   openReadonlyMode(): void {
     const documentId = this.activeDocumentId();
     if (documentId === null) {
@@ -250,11 +265,13 @@ export class DocumentWorkspacePageComponent {
     this.router.navigate(['/documents', documentId, 'readonly']);
   }
 
+  // event handler for return to library action (in lock modal)
   returnToLibrary(): void {
     this.lockModalOpen.set(false);
     this.router.navigate(['/library']);
   }
 
+  // for auto-save and save button 
   async saveDocument(): Promise<void> {
     const documentId = this.activeDocumentId();
     if (documentId === null || !this.canEdit() || this.saving() || !this.dirty()) {
@@ -280,6 +297,7 @@ export class DocumentWorkspacePageComponent {
     }
   }
 
+  // on component cleanup or when a different document is loaded
   private releaseLock(documentId: number): void {
     this.documents.unlockDocument(documentId).subscribe({
       error: () => {

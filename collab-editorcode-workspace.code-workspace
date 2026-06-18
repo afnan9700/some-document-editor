@@ -5,9 +5,19 @@
 		},
 		{
 			"path": "frontend"
+		},
+		{
+			"path": "."
+		},
+		{
+			"path": "ws-service"
+		},
+		{
+			"path": "collaboration-state-worker"
 		}
 	],
 	"settings": {
-		"java.compile.nullAnalysis.mode": "automatic"
+		"java.compile.nullAnalysis.mode": "automatic",
+		"java.configuration.updateBuildConfiguration": "interactive"
 	}
 }

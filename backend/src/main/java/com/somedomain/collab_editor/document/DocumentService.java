@@ -16,6 +16,7 @@ import com.somedomain.collab_editor.common.exceptions.NotFoundException;
 import com.somedomain.collab_editor.invite.InviteRepository;
 import com.somedomain.collab_editor.lock.DocumentLock;
 import com.somedomain.collab_editor.lock.DocumentLockRepository;
+import com.somedomain.collab_editor.lock.LockType;
 import com.somedomain.collab_editor.permission.DocumentPermission;
 import com.somedomain.collab_editor.permission.DocumentPermissionRepository;
 import com.somedomain.collab_editor.permission.PermissionLevel;
@@ -44,6 +45,7 @@ public class DocumentService {
     }
 
     /** Create a new document owned by user */
+    @Transactional
     public Document create(User owner, String title, String content) {
         Document doc = new Document();
         doc.setOwner(owner);
@@ -52,13 +54,21 @@ public class DocumentService {
         doc.setCreatedAt(Instant.now());
         doc.setLastModified(Instant.now());
         doc.setVersion(0);
-        // ownership is determined by doc.owner. owner has all permissions implicitly.
-        Document saved = documentRepository.save(doc);
 
+        Document saved = documentRepository.save(doc);
         permissionRepository.save(new DocumentPermission(saved, owner, PermissionLevel.OWNER));
 
         log.info("Document {} created by user {}", saved.getId(), owner.getUsername());
         return saved;
+    }
+
+    public boolean canUserEdit(Document doc, User user) {
+        if (doc.getOwner().getId().equals(user.getId())) {
+            return true;
+        }
+
+        var perm = permissionRepository.findByDocumentAndUser(doc, user);
+        return perm.isPresent() && perm.get().getLevel() == PermissionLevel.EDITOR;
     }
 
     // returns all docs owned by the user (not shared)
@@ -87,33 +97,30 @@ public class DocumentService {
     public Document saveDocument(Long docId, User user, String newContent) {
         Document doc = getById(docId);
 
-        // check if user has EDIT permission or is owner
-        if (!doc.getOwner().getId().equals(user.getId())) {
-            var perm = permissionRepository.findByDocumentAndUser(doc, user);
-            if (perm.isEmpty() || perm.get().getLevel() != PermissionLevel.EDITOR) {
-                throw new AppException("User does not have edit rights", 403);
-            }
+        if (!canUserEdit(doc, user)) {
+            throw new AppException("User does not have edit rights", 403);
         }
 
-        // check lock - must be locked by this user or unlocked
         Optional<DocumentLock> maybeLock = lockRepository.findByDocument(doc);
-        if (maybeLock.isPresent()) {
-            DocumentLock dl = maybeLock.get();
-            if (dl.getExpiresAt() != null && dl.getExpiresAt().isBefore(Instant.now())) {
-                // expired -> release automatically
-                lockRepository.delete(dl);
-                log.info("Expired lock on doc {} removed", docId);
-            } else if (!dl.getLockedByUser().getId().equals(user.getId())) {
-                throw new AppException("Document is locked by another user", 423); // 423 Locked
-            }
-        } else {
-            // Not locked — we enforce that edits must hold the lock. So reject.
+        if (maybeLock.isEmpty()) {
             throw new AppException("You must acquire edit lock before saving", 423);
+        }
+
+        DocumentLock lock = maybeLock.get();
+        if (lock.getExpiresAt() != null && lock.getExpiresAt().isBefore(Instant.now())) {
+            lockRepository.delete(lock);
+            throw new AppException("You must acquire edit lock before saving", 423);
+        }
+
+        if (lock.getLockType() == LockType.EXCLUSIVE) {
+            if (lock.getLockedByUser() == null || !lock.getLockedByUser().getId().equals(user.getId())) {
+                throw new AppException("Document is locked by another user", 423);
+            }
         }
 
         doc.setContent(newContent);
         doc.setLastModified(Instant.now());
-        // version is managed by JPA @Version; save will increment on commit
+
         Document saved = documentRepository.save(doc);
         log.info("Document {} saved by user {}", docId, user.getUsername());
         return saved;
@@ -125,11 +132,13 @@ public class DocumentService {
         if (!doc.getOwner().getId().equals(user.getId())) {
             throw new AppException("Only owner can delete document", 403);
         }
+
         lockRepository.deleteByDocument(doc);
         accessRequestRepository.deleteAllByDocument(doc);
         inviteRepository.deleteAllByDocumentId(docId);
         permissionRepository.deleteByDocument(doc);
         documentRepository.delete(doc);
+
         log.info("Document {} deleted by owner {}", docId, user.getUsername());
     }
 

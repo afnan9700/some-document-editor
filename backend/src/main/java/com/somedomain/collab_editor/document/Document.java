@@ -68,6 +68,7 @@ public class Document {
     public Integer getVersion() { return version; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getLastModified() { return lastModified; }
+    public DocumentContent getContentEntity() { return contentEntity; }
 
     public void setId(Long id) { this.id = id; }
     public void setOwner(User owner) { this.owner = owner; }

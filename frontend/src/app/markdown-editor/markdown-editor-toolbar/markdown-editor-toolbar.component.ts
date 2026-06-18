@@ -46,7 +46,7 @@ export class MarkdownToolbarComponent {
     return typeof action.visible === 'function'
       ? action.visible(ctx)
       : action.visible !== false;
-  }
+  } 
 
   isDisabled(action: MarkdownToolbarAction): boolean {
     const ctx = this.context();

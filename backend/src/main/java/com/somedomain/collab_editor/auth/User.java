@@ -2,9 +2,10 @@ package com.somedomain.collab_editor.auth;
 
 import java.time.Instant;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
 
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import jakarta.persistence.Column;
@@ -38,6 +39,14 @@ public class User implements UserDetails {
         this.createdAt = Instant.now();
     }
 
+    public static User jwtPrincipal(Long id, String username) {
+        User user = new User();
+        user.id = id;
+        user.username = username;
+        return user;
+    }
+
+    
     // --- domain getters/setters ---
     public Long getId() { return id; }
     public String getPasswordHash() { return passwordHash; }
@@ -62,8 +71,8 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // no roles/authorities yet
-        return Collections.emptyList();
+        // Give every user the 'ROLE_USER' authority
+        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
     @Override

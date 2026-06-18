@@ -1,17 +1,33 @@
 spring:
   application:
     name: collab-editor
+    springboot-bearer-token: ${SPRINGBOOT_BEARER_TOKEN:thetokenrequiredbyworker}
   datasource:
-    url: jdbc:postgresql://localhost:5432/postgres
-    password: tiger
-    username: postgres
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/doc-editor}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:supersecret}
   jpa:
     hibernate:
       ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
 jwt:
-    access-token-expiration-ms: 900000       # 15 minutes
-    refresh-token-expiration-ms: 604800000   # 7 days
-    secret: idkwhybutthisneedstobelongnahidekwhattofilladdingsomemoreforgoodmeasure
+  access-token-expiration-ms: 900000       # 15 minutes
+  refresh-token-expiration-ms: 604800000   # 7 days=
+  private-key: ${JWT_PRIVATE_KEY}
+  public-key: ${JWT_PUBLIC_KEY}
+
+router:
+  worker-bearer-token: ${WORKER_BEARER_TOKEN:thetokenrequiredbyspringboot}
+  workers:
+    - id: collab-worker-0
+      base-url: http://collaboration-state-worker:8082
+      # base-url: http://app-collaboration-state-worker:8082
+      # base-url: http://localhost:8082

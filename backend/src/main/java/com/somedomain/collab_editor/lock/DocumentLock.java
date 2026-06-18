@@ -14,53 +14,87 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 
 @Entity
 @Table(name = "document_locks")
 public class DocumentLock {
 
-    // 1. Define a basic serializable ID for JPA context tracking
     @Id
     private Long id;
 
-    // @OneToOne because a document mathematically has only one lock
-    // @MapsId to bind the primary key directly to this foreign key
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @MapsId 
+    @MapsId
     @JoinColumn(name = "document_id", nullable = false)
     private Document document;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "lock_type", nullable = false, length = 32)
+    private LockType lockType = LockType.EXCLUSIVE;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "user_id", nullable = true)
     private User lockedByUser;
 
     @Column(nullable = false)
     private Instant lockedAt = Instant.now();
 
-    @Column(nullable = true)
+    @Column(nullable = false)
     private Instant expiresAt;
 
-    public DocumentLock() {}
+    public DocumentLock() {
+    }
 
-    public DocumentLock(Document document, User lockedByUser, Instant expiresAt) {
+    public DocumentLock(Document document, User lockedByUser, LockType lockType, Instant expiresAt) {
         this.document = document;
         this.lockedByUser = lockedByUser;
+        this.lockType = lockType;
         this.lockedAt = Instant.now();
         this.expiresAt = expiresAt;
     }
 
-    // --- Domain Getters and Setters ---
-    
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public Document getDocument() { return document; }
-    public User getLockedByUser() { return lockedByUser; }
-    public Instant getLockedAt() { return lockedAt; }
-    public Instant getExpiresAt() { return expiresAt; }
+    public Document getDocument() {
+        return document;
+    }
 
-    public void setDocument(Document document) { this.document = document; }
-    public void setLockedByUser(User lockedByUser) { this.lockedByUser = lockedByUser; }
-    public void setLockedAt(Instant lockedAt) { this.lockedAt = lockedAt; }
-    public void setExpiresAt(Instant expiresAt) { this.expiresAt = expiresAt; }
+    public void setDocument(Document document) {
+        this.document = document;
+    }
+
+    public LockType getLockType() {
+        return lockType;
+    }
+
+    public void setLockType(LockType lockType) {
+        this.lockType = lockType;
+    }
+
+    public User getLockedByUser() {
+        return lockedByUser;
+    }
+
+    public void setLockedByUser(User lockedByUser) {
+        this.lockedByUser = lockedByUser;
+    }
+
+    public Instant getLockedAt() {
+        return lockedAt;
+    }
+
+    public void setLockedAt(Instant lockedAt) {
+        this.lockedAt = lockedAt;
+    }
+
+    public Instant getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(Instant expiresAt) {
+        this.expiresAt = expiresAt;
+    }
 }

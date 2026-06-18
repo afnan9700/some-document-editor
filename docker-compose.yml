@@ -1,0 +1,112 @@
+services:
+  # Database Service
+  db:
+    image: postgres:15-alpine
+    container_name: app-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: app-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # Injecting the values into the variables expected by application.yaml
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    depends_on:
+      - db
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  ws-service:
+    build:
+      context: ./ws-service
+    env_file:
+      - .env
+    ports:
+      - "8081:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+    expose: 
+      - "8081"
+
+  haproxy:
+    image: haproxy:2.9-alpine
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      ws-service:
+        condition: service_started
+
+  collaboration-state-worker:
+    build:
+      context: ./collaboration-state-worker
+      dockerfile: Dockerfile
+    container_name: app-collaboration-state-worker
+    restart: always
+    env_file:
+      - .env
+    environment:
+      PORT: 8082
+      SPRINGBOOT_BASE_URL: http://app-backend:8080
+    ports:
+      - "8082:8082"
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    expose:
+      - "8082"
+
+  #  Frontend Service
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: app-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+# Define named volumes for data persistence
+volumes:
+  pgdata:
+  redis-data:

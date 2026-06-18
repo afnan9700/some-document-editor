@@ -14,5 +14,5 @@ import { SafeHtml } from '@angular/platform-browser';
   `,
 })
 export class MarkdownPreviewComponent {
-  readonly html = input.required<SafeHtml>();
+  readonly html = input.required<SafeHtml>(); 
 }

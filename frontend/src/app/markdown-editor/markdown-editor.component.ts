@@ -127,7 +127,6 @@ export class MarkdownEditorComponent implements AfterViewInit {
   private readonly editorHost = viewChild.required<ElementRef<HTMLDivElement>>('editorHost');
   private readonly view = signal<EditorView | null>(null);
 
-  private readonly themeCompartment = new Compartment();
   private readonly interactionCompartment = new Compartment();
   private readonly extrasCompartment = new Compartment();
   private readonly ariaCompartment = new Compartment();
@@ -172,18 +171,6 @@ export class MarkdownEditorComponent implements AfterViewInit {
           EditorState.readOnly.of(readOnly),
           EditorView.editable.of(!readOnly),
         ]),
-      });
-    });
-
-    // view theme change effect
-    effect(() => {
-      const view = this.view();
-      if (!view) {
-        return;
-      }
-
-      view.dispatch({
-        effects: this.themeCompartment.reconfigure(this.theme().extensions),
       });
     });
 
@@ -235,7 +222,6 @@ export class MarkdownEditorComponent implements AfterViewInit {
           EditorState.readOnly.of(this.isReadOnly()),  // for any extensions that implement editing functionality
           EditorView.editable.of(!this.isReadOnly()),  // for editor content dom
         ]),
-        this.themeCompartment.of(this.theme().extensions),
         this.extrasCompartment.of(this.extraExtensions()),
         this.ariaCompartment.of(
           EditorView.contentAttributes.of({

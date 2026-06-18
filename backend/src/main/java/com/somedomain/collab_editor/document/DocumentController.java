@@ -17,8 +17,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.somedomain.collab_editor.auth.User;
+import com.somedomain.collab_editor.lock.DocumentLockDto;
 import com.somedomain.collab_editor.lock.LockService;
+import com.somedomain.collab_editor.lock.LockType;
 import com.somedomain.collab_editor.util.SecurityUtils;
+import com.somedomain.collab_editor.websocketticket.WebSocketTicketService;
+import com.somedomain.collab_editor.websocketticket.WebSocketTicketResponse;
 
 @RestController
 @RequestMapping("/api/docs")
@@ -26,6 +30,7 @@ public class DocumentController {
 
     private final DocumentService documentService;
     private final LockService lockService;
+    private final WebSocketTicketService ticketService;
 
     public record DocumentResponseDto(Long documentId,
             String title,
@@ -38,9 +43,10 @@ public class DocumentController {
     public record CreateDocReq(String title, String content) {
     }
 
-    public DocumentController(DocumentService documentService, LockService lockService) {
+    public DocumentController(DocumentService documentService, LockService lockService, WebSocketTicketService ticketService) {
         this.documentService = documentService;
         this.lockService = lockService;
+        this.ticketService = ticketService;
     }
 
     private DocumentResponseDto toDto(Document doc) {
@@ -87,36 +93,72 @@ public class DocumentController {
     }
 
     @PostMapping("/{id}/lock")
-    public ResponseEntity<?> acquireLock(@PathVariable Long id, @RequestParam(required = false) Long ttlSeconds) {
+    public ResponseEntity<?> acquireLock(
+            @PathVariable Long id,
+            @RequestParam String lockType,
+            @RequestParam(required = false) Long ttlSeconds) {
+
         User user = SecurityUtils.getCurrentUser();
-        var doc = documentService.getById(id);
-        var lock = lockService.acquireLock(doc, user, ttlSeconds == null ? null : Duration.ofSeconds(ttlSeconds));
-        // return ResponseEntity.ok(lock);
+        Document doc = documentService.getById(id);
+        LockType requestedType = LockType.fromRequest(lockType);
+
+        lockService.acquireLock(
+                doc,
+                user,
+                ttlSeconds == null ? null : Duration.ofSeconds(ttlSeconds),
+                requestedType
+        );
+
+        return ResponseEntity.ok(Map.of("status", "locked"));
+    }
+
+    @PostMapping("/{id}/lock/collaborative")
+    public ResponseEntity<?> switchToCollaborative(
+            @PathVariable Long id,
+            @RequestParam(required = false) Long ttlSeconds) {
+
+        User user = SecurityUtils.getCurrentUser();
+        Document doc = documentService.getById(id);
+
+        lockService.switchExclusiveToCollaborative(
+                doc,
+                user,
+                ttlSeconds == null ? null : Duration.ofSeconds(ttlSeconds)
+        );
+
         return ResponseEntity.ok(Map.of("status", "locked"));
     }
 
     @PostMapping("/{id}/unlock")
     public ResponseEntity<?> releaseLock(@PathVariable Long id) {
         User user = SecurityUtils.getCurrentUser();
-        var doc = documentService.getById(id);
+        Document doc = documentService.getById(id);
+
         lockService.releaseLock(doc, user);
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
 
     @PostMapping("/{id}/lock/refresh")
-    public ResponseEntity<?> refreshLock(@PathVariable Long id, @RequestParam(required = false) Long ttlSeconds) {
+    public ResponseEntity<?> refreshLock(
+            @PathVariable Long id,
+            @RequestParam(required = false) Long ttlSeconds) {
+
         User user = SecurityUtils.getCurrentUser();
         Document doc = documentService.getById(id);
-        var lock = lockService.refreshLock(doc, user, ttlSeconds == null ? null : Duration.ofSeconds(ttlSeconds));
-        // return ResponseEntity.ok(lock);
+
+        lockService.refreshLock(
+                doc,
+                user,
+                ttlSeconds == null ? null : Duration.ofSeconds(ttlSeconds)
+        );
+
         return ResponseEntity.ok(Map.of("status", "locked"));
     }
 
     @GetMapping("/{id}/lock")
-    public ResponseEntity<?> getLock(@PathVariable Long id) {
+    public ResponseEntity<DocumentLockDto> getLock(@PathVariable Long id) {
         Document doc = documentService.getById(id);
-        var lock = lockService.getLock(doc);
-        return ResponseEntity.ok(lock);
+        return ResponseEntity.ok(lockService.getLock(doc).orElse(null));
     }
 
     @DeleteMapping("/{id}")
@@ -124,6 +166,13 @@ public class DocumentController {
         User user = SecurityUtils.getCurrentUser();
         documentService.deleteDocument(id, user);
         return ResponseEntity.ok(Map.of("status", "deleted"));
+    }
+
+    @PostMapping("/{id}/ws-ticket")
+    public ResponseEntity<WebSocketTicketResponse> createTicket(@PathVariable Long id) {
+        return ResponseEntity.ok(
+            ticketService.createTicketWithContent(id, SecurityUtils.getCurrentUser())
+        );
     }
 
 }
