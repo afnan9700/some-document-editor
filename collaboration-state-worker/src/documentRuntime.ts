@@ -60,8 +60,8 @@ export class DocumentRuntime {
   }
 
   // for every doc change received
-  applyDocChange(payload: unknown): void {
-    const update = this.parseYjsUpdate(payload);
+  applyDocChange(payload: { update: string }): void {
+    const update = this.parseYjsUpdate(payload.update);
     if (!update) {
       this.logger.warn(`ignored invalid doc change payload for document ${this.documentId}`, safeJsonStringify(payload));
       return;
@@ -140,43 +140,13 @@ export class DocumentRuntime {
 
   // temporary method because the frontend message type is not finalized yet
   // though base64 is most likely what it will be
-  private parseYjsUpdate(payload: unknown): Uint8Array | null {
-    if (payload == null) return null;
-
-    // if (payload instanceof Uint8Array) {
-    //   return payload;
-    // }
-
-    // if (Array.isArray(payload) && payload.every((item) => typeof item === "number")) {
-    //   return Uint8Array.from(payload);
-    // }
-
-    if (typeof payload === "string") {
-      if (isProbablyBase64(payload)) {
-        return base64ToUint8Array(payload);
-      }
-      try {
-        const parsed = JSON.parse(payload) as unknown;
-        return this.parseYjsUpdate(parsed);
-      } catch {
-        return null;
-      }
+  private parseYjsUpdate(base64: string): Uint8Array | null {
+    const binary = atob(base64);
+    const bytes  = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
     }
-
-    // if (typeof payload === "object") {
-    //   const record = payload as Record<string, unknown>;
-    //   if (record.type === "Buffer" && Array.isArray(record.data)) {
-    //     return Uint8Array.from(record.data.filter((n): n is number => typeof n === "number"));
-    //   }
-
-    //   const candidates = [record.update, record.data, record.bytes, record.payload];
-    //   for (const candidate of candidates) {
-    //     const parsed = this.parseYjsUpdate(candidate);
-    //     if (parsed) return parsed;
-    //   }
-    // }
-
-    return null;
+    return bytes;
   }
 
   private parseParticipantEventPayload(payload: unknown): ParticipantEventPayload | null {

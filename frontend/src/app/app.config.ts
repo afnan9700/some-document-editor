@@ -1,5 +1,5 @@
 import { provideAppInitializer, ApplicationConfig, provideBrowserGlobalErrorListeners, inject } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { environment } from '../environments/environment';
 import { API_BASE_URL, WS_BASE_URL } from './core/tokens';
@@ -13,7 +13,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideAppInitializer(() => inject(AuthService).tryRestoreSession()),
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes),
+    provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withInterceptors([jwtInterceptor])),
     { provide: API_BASE_URL, useValue: environment.apiBaseUrl },
     { provide: WS_BASE_URL, useValue: environment.wsBaseUrl },

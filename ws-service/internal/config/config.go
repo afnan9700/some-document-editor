@@ -39,7 +39,7 @@ func Load() Config {
 		RedisPort:             getEnv("REDIS_PORT", "6379"),
 		RedisPassword:         getEnv("REDIS_PASSWORD", ""),
 		RedisDB:               getEnvInt("REDIS_DB", 0),
-		AllowedOrigins:        splitAndTrim(getEnv("ALLOWED_ORIGINS", "http://localhost:4200,http://127.0.0.1:4200,http://localhost:80")),
+		AllowedOrigins:        splitAndTrim(getEnv("ALLOWED_ORIGINS", "http://localhost:4200,http://127.0.0.1:4200,http://localhost:80,http://localhost")),
 		TicketKeyPrefix:       getEnv("TICKET_KEY_PREFIX", "ws:ticket:"),
 		NodeID:                getEnv("NODE_ID", hostnameOrFallback("ws-node")),
 		WebSocketReadLimit:    getEnvInt64("WS_READ_LIMIT_BYTES", 65536),

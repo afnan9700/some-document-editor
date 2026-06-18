@@ -121,8 +121,12 @@ export class DocumentManager {
         this.logger.debug(`participant left`, { documentId: runtime.documentId, userCount: runtime.userCount, channel, originNodeId });
         return;
       case "doc.change":
-        runtime.applyDocChange(envelope.payload);
-        this.logger.debug(`document changed`, { documentId: runtime.documentId, contentLength: runtime.content.length, channel, originNodeId });
+        if (typeof envelope.payload === "object" && envelope.payload !== null && typeof (envelope.payload as any).update === "string") {
+          runtime.applyDocChange(envelope.payload as { update: string });
+          this.logger.debug(`document changed`, { documentId: runtime.documentId, contentLength: runtime.content.length, channel, originNodeId });
+        } else {
+          this.logger.warn(`invalid doc.change payload`, { documentId: runtime.documentId, channel, rawMessage });
+        }
         return;
       case "chat.message":
         runtime.addChatMessage(originNodeId, envelope);

@@ -1,3 +1,4 @@
+// collaboration/collab-chat.component.ts
 import { Component, ElementRef, computed, effect, input, output, signal, viewChild } from '@angular/core';
 import { Observable, Subscription } from 'rxjs';
 import { marked } from 'marked';

@@ -1,7 +1,7 @@
 package protocol
 
 type ChatPayload struct {
-	Text string `json:"text"`
+	Text string `json:"content"`
 }
 
 type ConnectionAckPayload struct {

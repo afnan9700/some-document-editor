@@ -19,14 +19,13 @@ export class SpringClient {
       Authorization: `Bearer ${this.bearerToken}`,
     };
 
-    if (finalSync) {
-      headers["final"] = "true";
-    }
-
     const response = await fetch(url, {
       method: "PUT",
       headers,
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ 
+        content,
+        final: finalSync
+       }),
     });
 
     if (!response.ok) {

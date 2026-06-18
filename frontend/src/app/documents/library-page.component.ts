@@ -18,6 +18,7 @@ import { InviteLinkModalComponent } from '../document-sharing/invite-link-modal.
 import type { DocPermission, DocumentSummary } from './document.models';
 import type { DocStatus } from '../ui/status-badge.component';
 
+// library-page.component.ts
 @Component({
   selector: 'app-library-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -59,6 +60,7 @@ import type { DocStatus } from '../ui/status-badge.component';
               (openDoc)="handleOpenDocument($event)"
               (shareDoc)="handleShareDocument($event)"
               (deleteDoc)="handleDeleteDocument($event)"
+              (collaborateDoc)="handleCollaborateDocument($event)"
             />
           }
         </div>
@@ -234,12 +236,42 @@ export class LibraryPageComponent implements OnInit {
   }
 
   mapPermissionToStatus(permission: DocPermission): DocStatus {
-    if (permission == 'OWNER') 
-      return 'owned';
-    else if (permission == 'EDITOR')
-      return 'shared: Editable';
-    else (permission == 'VIEWER')
-      return 'shared: Readonly';
+    switch (permission) {
+      case 'OWNER':
+        return 'owned';
+      case 'EDITOR':
+        return 'shared: Editable';
+      case 'VIEWER':
+        return 'shared: Readonly';
+    }
+  }
+
+  handleOpenDocument(id: string): void {
+    const doc = this.documents().find((item) => item.documentId.toString() === id);
+    if (!doc) return;
+
+    if (doc.myPermission === 'VIEWER') {
+      void this.router.navigate(['/documents', id, 'readonly']);
+      return;
+    }
+
+    void this.router.navigate(['/documents', id, 'open'], {
+      state: { permission: doc.myPermission },
+    });
+  }
+
+  handleCollaborateDocument(id: string): void {
+    const doc = this.documents().find((item) => item.documentId.toString() === id);
+    if (!doc) return;
+
+    if (doc.myPermission === 'VIEWER') {
+      void this.router.navigate(['/documents', id, 'readonly']);
+      return;
+    }
+
+    void this.router.navigate(['/documents', id, 'collab'], {
+      state: { permission: doc.myPermission },
+    });
   }
 
   openCreateModal(): void {
@@ -281,13 +313,6 @@ export class LibraryPageComponent implements OnInit {
       });
   }
 
-  handleOpenDocument(id: string): void {
-    void this.router.navigate(['/documents', id, 'open']);
-  }
-
-  handleCollaborateDocument(id: string): void {
-    void this.router.navigate(['/documents', id, 'collaborate']);
-  }
 
   handleShareDocument(id: string): void {
     const documentId = Number(id);

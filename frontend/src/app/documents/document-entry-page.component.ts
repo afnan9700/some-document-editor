@@ -15,9 +15,9 @@ import { of, throwError } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { DocumentService } from '../documents/document.service';
 import { ModalComponent } from '../ui/modal.component';
-import { DocumentLockDto } from '../documents/document.models';
+import { DocPermission, DocumentLockDto } from '../documents/document.models';
 
-type EntryIntent = 'open' | 'collaborate';
+type EntryIntent = 'open' | 'collab';
 type LockState = 'none' | 'exclusive' | 'collaborative';
 
 @Component({
@@ -45,31 +45,32 @@ type LockState = 'none' | 'exclusive' | 'collaborative';
         (close)="returnToLibrary()"
       >
         @if (lockState() === 'collaborative') {
-          <p class="py-2">
-            An existing collaborative session is already active
-            {{ lockedByUsername() ? 'by ' + lockedByUsername() : '' }}.
-            You can join that session.
-          </p>
+          <ng-container modal-actions>
+            <p class="py-2">
+              An existing collaborative session is already active
+              {{ lockedByUsername() ? 'by ' + lockedByUsername() : '' }}.
+              Join that session to continue.
+            </p>
 
-          <div modal-actions class="flex gap-2">
-            <button class="btn btn-primary" (click)="joinCollaborativeSession()">
-              Join session
-            </button>
-            <button class="btn btn-ghost" (click)="returnToLibrary()">
-              Back
-            </button>
-          </div>
-        } @else {
-          <p class="py-2">
-            Document is currently being edited by {{ lockedByUsername() ?? 'another user' }}.
-            Proceed in readonly mode or return to library?
-          </p>
+            <div class="flex gap-2">
+              <button class="btn btn-primary" (click)="joinCollaborativeSession()">
+                Join session
+              </button>
+            </div>
+          </ng-container>
+        } @else if (lockState() === 'exclusive') {
+          <ng-container modal-actions>
+            <p class="py-2">
+              Document is currently being edited by {{ lockedByUsername() ?? 'another user' }}.
+              You can still open it in readonly mode.
+            </p>
 
-          <div modal-actions class="flex gap-2">
-            <button class="btn btn-primary" (click)="openReadonlyMode()">
-              Proceed in readonly mode
-            </button>
-          </div>
+            <div class="flex gap-2">
+              <button class="btn btn-primary" (click)="openReadonlyMode()">
+                Proceed in readonly mode
+              </button>
+            </div>
+          </ng-container>
         }
       </app-modal>
     }
@@ -104,7 +105,7 @@ export class DocumentEntryGatePageComponent {
     this.route.url.pipe(
       map((segments) => {
         const last = segments[segments.length - 1]?.path;
-        return last === 'collaborate' ? 'collaborate' : 'open';
+        return last === 'collab' ? 'collab' : 'open';
       }),
       distinctUntilChanged(),
     ),
@@ -112,7 +113,7 @@ export class DocumentEntryGatePageComponent {
   );
 
   constructor() {
-    effect(() => {
+    effect((onCleanup) => {
       const documentId = this.routeDocumentId();
 
       if (documentId === null) {
@@ -127,7 +128,15 @@ export class DocumentEntryGatePageComponent {
       this.lockedByUsername.set(null);
       this.lockState.set('none');
 
-      this.documents
+      const permissionHint = this.readPermissionHint();
+
+      if (permissionHint === 'VIEWER') {
+        this.loading.set(false);
+        void this.router.navigate(['/documents', documentId, 'readonly']);
+        return;
+      }
+
+      const lockSub = this.documents
         .getDocumentLock(documentId)
         .pipe(
           catchError((err: unknown) => {
@@ -136,54 +145,60 @@ export class DocumentEntryGatePageComponent {
             }
             return throwError(() => err);
           }),
-          switchMap((lock) => {
-            if (lock && lock.lockedByUsername !== this.auth.currentUser?.username) {
-              if (lock.lockType === 'EXCLUSIVE') {
-                this.lockedByUsername.set(lock.lockedByUsername);
-                this.lockState.set('exclusive');
-                this.lockModalOpen.set(true);
-                this.loading.set(false);
-                return of(null);
-              }
-
-              if (lock.lockType === 'COLLABORATIVE') {
-                this.lockedByUsername.set(lock.lockedByUsername);
-                this.lockState.set('collaborative');
-                this.lockModalOpen.set(true);
-                this.loading.set(false);
-                return of(null);
-              }
-            }
-
-            return this.documents.openDocument(documentId);
-          }),
         )
         .subscribe({
-          next: (doc) => {
-            if (!doc) return;
-
-            if (this.intent() === 'collaborate') {
-              if (doc.myPermission === 'OWNER' || doc.myPermission === 'EDITOR') {
-                this.router.navigate(['/documents', documentId, 'collaborate']);
-                return;
-              }
-
-              this.router.navigate(['/documents', documentId, 'readonly']);
+          next: (lock) => {
+            if (lock?.lockType === 'COLLABORATIVE') {
+              this.lockedByUsername.set(lock.lockedByUsername);
+              this.lockState.set('collaborative');
+              this.lockModalOpen.set(true);
+              this.loading.set(false);
               return;
             }
 
-            if (doc.myPermission === 'VIEWER') {
-              this.router.navigate(['/documents', documentId, 'readonly']);
+            if (lock?.lockType === 'EXCLUSIVE') {
+              this.lockedByUsername.set(lock.lockedByUsername);
+              this.lockState.set('exclusive');
+              this.lockModalOpen.set(true);
+              this.loading.set(false);
               return;
             }
 
-            this.router.navigate(['/documents', documentId, 'edit']);
+            console.log(lock);
+            console.log(this.intent());
+
+            if (this.intent() === 'collab') {
+              this.loading.set(false);
+              void this.router.navigate(['/documents', documentId, 'collab', 'init']);
+              return;
+            }
+
+            const openSub = this.documents.openDocument(documentId).subscribe({
+              next: (doc) => {
+                this.loading.set(false);
+
+                if (!doc || doc.myPermission === 'VIEWER') {
+                  void this.router.navigate(['/documents', documentId, 'readonly']);
+                  return;
+                }
+
+                void this.router.navigate(['/documents', documentId, 'edit']);
+              },
+              error: (err) => {
+                this.error.set(this.describeError(err));
+                this.loading.set(false);
+              },
+            });
+
+            onCleanup(() => openSub.unsubscribe());
           },
           error: (err) => {
             this.error.set(this.describeError(err));
             this.loading.set(false);
           },
         });
+
+      onCleanup(() => lockSub.unsubscribe());
     });
   }
 
@@ -192,7 +207,7 @@ export class DocumentEntryGatePageComponent {
     if (documentId === null) return;
 
     this.lockModalOpen.set(false);
-    this.router.navigate(['/documents', documentId, 'readonly']);
+    void this.router.navigate(['/documents', documentId, 'readonly']);
   }
 
   joinCollaborativeSession(): void {
@@ -200,12 +215,26 @@ export class DocumentEntryGatePageComponent {
     if (documentId === null) return;
 
     this.lockModalOpen.set(false);
-    this.router.navigate(['/documents', documentId, 'collaborate']);
+    void this.router.navigate(['/documents', documentId, 'collab', 'join']);
   }
 
   returnToLibrary(): void {
     this.lockModalOpen.set(false);
-    this.router.navigate(['/library']);
+    void this.router.navigate(['/library']);
+  }
+
+  private readPermissionHint(): DocPermission | null {
+    const permission = history.state?.permission as unknown;
+
+    if (
+      permission === 'OWNER' ||
+      permission === 'EDITOR' ||
+      permission === 'VIEWER'
+    ) {
+      return permission;
+    }
+
+    return null;
   }
 
   private describeError(error: unknown): string {

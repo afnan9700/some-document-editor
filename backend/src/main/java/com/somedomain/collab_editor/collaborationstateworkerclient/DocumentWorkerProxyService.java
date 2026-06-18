@@ -23,10 +23,11 @@ public class DocumentWorkerProxyService {
 
     public record InitializeDocumentRequest(String content) {}
 
-    public DocumentWorkerProxyService(WorkerHttpClient workerHttpClient, LockService lockService, DocumentRepository documentRepository) {
+    public DocumentWorkerProxyService(WorkerHttpClient workerHttpClient, LockService lockService, DocumentRepository documentRepository, ObjectMapper objectMapper) {
         this.workerHttpClient = workerHttpClient;
         this.lockService = lockService;
         this.documentRepository = documentRepository;
+        this.objectMapper = objectMapper;
     }
 
     
@@ -48,8 +49,6 @@ public class DocumentWorkerProxyService {
                 requestBody
         );
 
-        lockService.acquireCollaborativeLock(Long.valueOf(documentId));
-
         ResponseEntity<byte[]> workerResponse = response.toResponseEntity();
 
         try {
@@ -70,11 +69,16 @@ public class DocumentWorkerProxyService {
 
             byte[] finalBytes = objectMapper.writeValueAsBytes(finalBody);
 
+
+            lockService.acquireCollaborativeLock(Long.valueOf(documentId));
+
             return ResponseEntity.status(workerResponse.getStatusCode())
                     .headers(workerResponse.getHeaders())
                     .body(finalBytes);
 
         } catch (Exception e) {
+            System.out.println(workerResponse);
+            System.out.println(e);
             // Fallback if something goes wrong while merging JSON
             return ResponseEntity.status(500)
                     .body("{\"error\":\"failed_to_build_response\"}".getBytes(StandardCharsets.UTF_8));

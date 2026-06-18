@@ -3,6 +3,7 @@ import { Component, ChangeDetectionStrategy, input, output, signal } from '@angu
 import { DatePipe } from '@angular/common';
 import { StatusBadgeComponent, DocStatus } from './status-badge.component';
 
+// document-card.component.ts
 @Component({
   selector: 'app-document-card',
   imports: [DatePipe, StatusBadgeComponent],

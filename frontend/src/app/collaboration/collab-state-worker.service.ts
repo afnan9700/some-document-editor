@@ -9,15 +9,6 @@ export interface InitializeDocumentResponse {
   content: string;
 }
 
-export interface WorkerSyncResponse {
-  documentId: number;
-  userCount: number;
-  content: string;
-  chatHistory: ChatHistoryEntry[];
-  participantMap: Record<string, string>;
-  yjsStateBase64: string;
-}
-
 export type ChatHistoryEntry = CollaborationEnvelope<ChatMessagePayload>;
 
 export interface WorkerSyncResponse {

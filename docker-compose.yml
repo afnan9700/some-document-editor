@@ -21,6 +21,8 @@ services:
     restart: always
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
       # Injecting the values into the variables expected by application.yaml
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME}
@@ -81,7 +83,7 @@ services:
       - .env
     environment:
       PORT: 8082
-      SPRINGBOOT_BASE_URL: http://localhost:8080
+      SPRINGBOOT_BASE_URL: http://app-backend:8080
     ports:
       - "8082:8082"
     depends_on:

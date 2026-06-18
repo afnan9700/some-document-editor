@@ -69,7 +69,9 @@ func (c *Client) ReadPump(h *Hub) {
 			}
 
 		case protocol.MessageTypeDocChange:
-			c.SendError("unsupported_type", "document changes are not enabled yet")
+			if err := h.HandleClientEnvelope(context.Background(), c, incoming); err != nil {
+				c.SendError("publish_failed", "message could not be delivered")
+			}
 
 		default:
 			c.SendError("unsupported_type", "message type is not supported")

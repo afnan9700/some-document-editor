@@ -18,20 +18,6 @@ export const routes: Routes = [
         loadComponent: () => import('./documents/library-page.component').then(m => m.LibraryPageComponent) 
       },
       {
-        path: 'documents/:id',
-        loadComponent: () =>
-          import('./document-workspace/document-workspace-page.component').then(
-            (m) => m.DocumentWorkspacePageComponent,
-          ),
-      },
-      {
-        path: 'documents/:id/readonly',
-        loadComponent: () =>
-          import('./document-workspace/document-workspace-page-readonly.component').then(
-            (m) => m.DocumentWorkspaceReadonlyPageComponent,
-          ),
-      },
-      {
         path: 'documents/:id/open',
         loadComponent: () =>
           import('./documents/document-entry-page.component').then(
@@ -52,10 +38,29 @@ export const routes: Routes = [
             (m) => m.DocumentWorkspaceReadonlyPageComponent,
           ),
       },
-      // {
-      //   path: 'documents/:id/collaborate',
-      //   loadComponent: () => ,
-      // },
+      {
+        path: 'documents/:id/collab',
+        loadComponent: () =>
+          import('./documents/document-entry-page.component').then(
+            (m) => m.DocumentEntryGatePageComponent,
+          ),
+      },
+      {
+        path: 'documents/:id/collab/init',
+        loadComponent: () =>
+          import('./collaboration/collab-workspace-page.component').then(
+            (m) => m.CollabWorkspacePageComponent,
+          ),
+        data: { mode: 'initialize' } // Pass the mode declaratively
+      },
+      {
+        path: 'documents/:id/collab/join',
+        loadComponent: () =>
+          import('./collaboration/collab-workspace-page.component').then(
+            (m) => m.CollabWorkspacePageComponent,
+          ),
+        data: { mode: 'join' }
+      },
       {
         path: 'requests',
         loadComponent: () =>

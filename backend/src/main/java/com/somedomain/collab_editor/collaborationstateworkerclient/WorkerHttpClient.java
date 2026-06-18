@@ -27,6 +27,7 @@ public class WorkerHttpClient {
 
     public ProxyResponse put(String documentId, String path, Object requestBody) {
         URI uri = workerUri(documentId, path);
+        System.out.println(uri);
 
         try {
             ResponseEntity<byte[]> entity = restClient.put()
@@ -74,6 +75,7 @@ public class WorkerHttpClient {
 
     private String workerBearerHeader() {
         String token = routerProperties.getWorkerBearerToken();
+        System.out.println(token);
         if (token == null || token.isBlank()) {
             throw new IllegalStateException("router.worker-bearer-token is not configured");
         }
