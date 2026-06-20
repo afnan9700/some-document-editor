@@ -30,7 +30,7 @@ export function buildServer(config: AppConfig, documentManager: DocumentManager)
       return res.status(400).json({ error: "content_is_required" });
     }
 
-    await documentManager.initializeDocument(documentId, content);
+    await documentManager.initializeDocument(documentId, content, req.body.userId, req.body.username);
     return res.status(200).json({ status: "ok", documentId });
   });
 

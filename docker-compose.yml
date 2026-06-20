@@ -1,7 +1,7 @@
 services:
   # Database Service
   db:
-    image: postgres:15-alpine
+    image: docker.io/library/postgres:15-alpine
     container_name: app-postgres
     restart: always
     environment:
@@ -38,7 +38,7 @@ services:
       - redis
 
   redis:
-    image: redis:7-alpine
+    image: docker.io/library/redis:7-alpine
     ports:
       - "6379:6379"
     volumes:
@@ -64,7 +64,7 @@ services:
       - "8081"
 
   haproxy:
-    image: haproxy:2.9-alpine
+    image: docker.io/library/haproxy:2.9-alpine
     ports:
       - "3001:3001"
     volumes:
@@ -102,7 +102,7 @@ services:
     container_name: app-frontend
     restart: always
     ports:
-      - "80:80"
+      - "4200:80"
     depends_on:
       - backend
 

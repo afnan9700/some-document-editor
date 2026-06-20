@@ -243,7 +243,6 @@ export class CollabWorkspaceComponent implements OnInit {
       const responseAgain: WorkerSyncResponse = await firstValueFrom(
         this.workerService.syncDocument(this.documentId()),
       );
-      this.userCount.set(responseAgain.userCount - 1); // because the frontend will listen to its own participant joining message
       this.usernames.set(parseParticipantMap(responseAgain.participantMap));
       this.remoteUpdates$.next(decodeBase64ToUint8(responseAgain.yjsStateBase64));
       for (const entry of responseAgain.chatHistory) {

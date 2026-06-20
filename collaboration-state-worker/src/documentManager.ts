@@ -21,7 +21,7 @@ export class DocumentManager {
     private readonly persistIntervalMs: number,
   ) {}
 
-  async initializeDocument(documentId: number, content: string): Promise<void> {
+  async initializeDocument(documentId: number, content: string, userId: number, username: string): Promise<void> {
     const existing = this.documents.get(documentId);
     if (existing) {
       // if document session is already being managed before initialization (should not happen)
@@ -43,6 +43,7 @@ export class DocumentManager {
     this.documents.set(documentId, runtime);  
     await this.subscribeToDocument(documentId);
     runtime.startAutoPersistence();
+    runtime.participantMap.set(userId, username);
     this.logger.info(`initialized document runtime`, { documentId, initialContentLength: content.length });
   }
 
