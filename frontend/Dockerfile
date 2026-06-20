@@ -1,5 +1,5 @@
 # Stage 1: Build the Angular application
-FROM node:20-alpine AS builder
+FROM docker.io/library/node:22-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -9,7 +9,7 @@ COPY . .
 RUN npm run build --configuration=production
 
 # Stage 2: Serve the application using Nginx
-FROM nginx:alpine
+FROM docker.io/library/nginx:1.25-alpine
 # Remove default Nginx static assets
 RUN rm -rf /usr/share/nginx/html/*
 

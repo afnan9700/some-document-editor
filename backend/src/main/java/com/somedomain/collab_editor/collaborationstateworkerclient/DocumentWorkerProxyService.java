@@ -12,6 +12,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.somedomain.collab_editor.document.Document;
 import com.somedomain.collab_editor.lock.LockService;
+import com.somedomain.collab_editor.util.SecurityUtils;
+import com.somedomain.collab_editor.auth.User;
 
 @Service
 public class DocumentWorkerProxyService {
@@ -21,7 +23,7 @@ public class DocumentWorkerProxyService {
     private final DocumentRepository documentRepository;
     private ObjectMapper objectMapper;
 
-    public record InitializeDocumentRequest(String content) {}
+    public record InitializeDocumentRequest(String content, Long userId, String username) {}
 
     public DocumentWorkerProxyService(WorkerHttpClient workerHttpClient, LockService lockService, DocumentRepository documentRepository, ObjectMapper objectMapper) {
         this.workerHttpClient = workerHttpClient;
@@ -41,7 +43,9 @@ public class DocumentWorkerProxyService {
         }
 
         String content = document.getContentEntity().getContent();
-        InitializeDocumentRequest requestBody = new InitializeDocumentRequest(content);
+        User user = SecurityUtils.getCurrentUser();
+
+        InitializeDocumentRequest requestBody = new InitializeDocumentRequest(content, user.getId(), user.getUsername());
 
         ProxyResponse response = workerHttpClient.put(
                 String.valueOf(documentId),

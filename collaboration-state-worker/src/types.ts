@@ -39,6 +39,8 @@ export interface WorkerSyncResponse {
 
 export interface InitDocumentRequestBody {
   content: string;
+  userId: number;
+  username: string;
 }
 
 export interface SpringSyncRequestBody {
