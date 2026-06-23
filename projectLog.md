@@ -5,11 +5,12 @@ So I heard from somewhere that making collaborative applications can be quite co
 
 I already had some experience with Java, and I also really wanted to learn spring. Both because job opportunities, and to also just try something fresh. So I decided to go with spring with the hope that I will also gain familiarity with it in the process of making the project. 
 
-I will mention it. This whole application is written by chatgpt. Yeah. Its written by chatgpt, but I understand the working of almost all of it. So... I think its fine? I don't know. I do make sure to read and understand everything before I paste it into my codebase. And tbh, this doesn't really feel that much different than "following a tutorial" on youtube (though ive never really done that, so i could be wrong). But it feels like its working, and I understand everything well enough to identify any problems that might occur (i think), so... Idk. I just wanted to justify using chatgpt a little, that's it. And I think that was enough justification.
+I will mention it. This whole application is written by chatgpt. Yeah. Its written by chatgpt, but I understand the working of almost all of it. So... I think its fine? I don't know. I do make sure to read and understand everything before I paste it into my codebase. And tbh, this doesn't really feel that much different than "following a tutorial" on youtube (though ive never really done much of that, so i could be wrong). But it feels like its working, and I understand everything well enough to identify any problems that might occur (i think), so... Idk. I just wanted to justify using chatgpt a little, that's it. And I think that was enough justification.
 
 ---
 ## chapter 1
 (25-11-14)
+(the data format is `YY-M-D` (just so you dont lose your mind!))
 
 I started by setting up the project by using the spring intializr and added all the dependencies chatgpt told me to include. I think this is analogous to doing `npm init` in node.js. And the build tool I decided to go with is Maven (the other option is called Gradle). The reason I went with Maven is again the same, chatgpt told me to. This is only the preliminary stuff, so I am not being too persistent about the reasoning for my choices.
 
@@ -345,7 +346,7 @@ The flow is going to be mostly organic. I am not trying to follow any rules here
 #### preliminary backend changes
 My backend uses the refresh and access token auth, so my first thoughts were about how I would store those tokens on the frontend. Local storage is highly discouraged because it is prone to "XSS attacks" (not sure what it means), and cookies are discouraged because of CSRF. 
 
-GPT suggested a very clever design. We store access tokens in-memory, and refresh tokens as httpOnly cookies. Yes, httpOnly cookies are prone to CSRF, but refresh tokens are useful only because it returns the response containing the access token. And because of CORS, no malicious website can read the response returned by the server, rendering the `/refresh` route useless to the attacker. Remember, CORS is handled by the browser, not the server. If a request gets sent to the server from a malicious origin, the server processes it like any other request and sends back the response. It is the browser which intercepts and decided whether to actually show the response to the requester or not. The server can however configure which sites can be whitelisted by CORS, and the browser would let requests from those sites in. That is the reason why we store access tokens in-memory, and not as cookies. 
+GPT suggested a very clever design. We store access tokens in-memory, and refresh tokens as httpOnly cookies. Yes, httpOnly cookies are prone to CSRF, but refresh tokens are useful only because it returns the response containing the access token. And because of CORS, no malicious website can read the response returned by the server, rendering the `/refresh` route useless to the attacker. Remember, CORS is handled by the browser, not the server. If a request gets sent to the server from a malicious origin, the server processes it like any other request and sends back the response. It is the browser which intercepts and decides whether to actually show the response to the requester or not. The server can however configure which sites can be whitelisted by CORS, and the browser would let requests from those sites in. That is the reason why we store access tokens in-memory, and not as cookies. 
 
 I made the backend to set `http://localhost:4200` as an allowed origin. The CORS configuration in spring is applied at filter-level. It is attached to the `securityFilterChain` to which we also attached the `JwtFilter`. Like I said it the last time, this is the single file that I don't understand very well, so... I am just going to kinda brush it off for now. But remember that you can configure a lot, like you can even decide the specific headers and HTTP methods that should be whitelisted. 
 
@@ -435,7 +436,7 @@ It is possible that the call to `/refresh` itself fails, which could suggest tha
 And that was it. Seems that this pattern is called "silent refresh". Cool.
 
 Oh, and the interceptor needs to be registered in the `app.config.ts` file so that angular will know to use it. 
-```tyepscript
+```ts
 providers: [
 	provideHttpClient(withInterceptors([jwtInterceptor]))
 ]
@@ -443,9 +444,11 @@ providers: [
 I don't know much about it.
 
 #### `core/api.service.ts`
-All services make requests only to the routes (such as `auth/login`) and don't include the name of the origin. This choice is intentional because of obvious reasons. You might suggest doing something like `http.post<T>(${environment.apiBaseUrl}/users)`, where `environment.apiBaseUrl` is exported by a file. It would work, and tbh, I can't really see what's wrong (other than tight coupling with the `environment.ts` file specifically (but feels like that shouldn't be a problem because you are allowed to alter the `apiBaseUrl` variable right? idk)).
+All angular services make requests only to the backend "routes" (such as `auth/login`, `documents/`) and don't include the name of the origin. This choice is intentional because of obvious reasons such as to avoid hard coding the origin.  
 
-We take it to the next level and define a separate service (`api.service.ts`) that makes those HTTP calls to the appropriate URLs. Other services use this service to make requests instead of directly using `http`.
+You might suggest doing something like `http.post<T>(${environment.apiBaseUrl}/users)`, where `environment.apiBaseUrl` is exported by a file. It would work, and tbh, I can't really see what's wrong (other than tight coupling with the `environment.ts` file specifically (but feels like that shouldn't be a problem because you are allowed to alter the `apiBaseUrl` variable, idk)).
+
+But we take it to the next level and define a separate service (`api.service.ts`) that makes those HTTP calls to the appropriate URLs. Other services use this service to make requests instead of directly using `http`.
 
 But it doesn't stop there. We want the specific API URL that the `ApiService` will use to also be injected as a dependency by Angular's dependency injection system (i have no idea why). The problem is that API URL is not a class of it's own, but rather just a string. And Angular's DI doesn't work for such strings, so we use this thing called `InjectionToken` to overcome that restriction. The file `core/tokens.ts` contains that `API_BASE_URL` dependency.
 
@@ -454,7 +457,7 @@ Since `API_BASE_URL` is a dependency it needs to be configured in the `providers
 #### misc
 And that was all for today. 
 
-I actually ran into many really annoying bugs and lost so many hours trying to fix them. These aren't the intelligent bugs, but instead the really frustrating kind of ones, such as the configuration of `ES6` or `CommonJS` in the `tsconfig.app.json` file. I spent so much time trying to fix it but nothing worked. Like one time the code literally disappeared from my files wtf?! I thought that I would quickly make a commit to avoid losing progress, and suddenly, for whatever reason, it starts to work after making the commit. I hate that shi so much aoefu aoef uenf
+I actually ran into many really annoying bugs and lost many hours trying to fix them. These aren't the intelligent bugs, but instead the really frustrating kind of ones, such as the configuration of `ES6` or `CommonJS` in the `tsconfig.app.json` file. I spent so much time trying to fix it but nothing worked. Like one time the code literally disappeared from my files wtf?! I thought that I would quickly make a commit to avoid losing progress, and suddenly, for whatever reason, it starts to work after making the commit. I hate that shi so much aoefu aoef uenf
 
 I think I want to change the schema of my database a bit. Currently, the `content` field is stored in the `Document` table itself. And that doesn't feel right to me because of how radically different the field `content` is compared to other fields of the `Document` table. The current design also made me have to do all the spaghetti with `DocumentMetaDto` projections. I think it would be much cleaner if I had stored `content` is `DocumentContent` table separately.
 
@@ -468,10 +471,9 @@ Its alright.
 See ya.
 
 ---
-
 ## chapter 7
 <details>
-<summary>(10-5-26)</summary>
+<summary>(26-5-10)</summary>
 Ugh I am really sorry about the delay... I know that there isn't really anyone I need to be sorry to (other than myself of course), but... I just felt like I had to say it. I will try to be more regular from now on. 
 </details>
 
@@ -484,10 +486,10 @@ Codemirror provides the interface for only the document editing, nothing else. T
 
 To be really honest, I didn't have a clear idea about what exactly I want this document editor to be capable of myself. All I knew was that 
 - It should be extensible to support live editing in future (which is why I went with codemirror)
-- I should be able to add custom rendering rules.(I mistook that this part was handled by codemirror. whereas, it is actually the job of the markdown parser)
+- I should be able to add custom rendering rules. (I mistook that this part was handled by codemirror. whereas, it is actually the job of the markdown parser)
 Thinking back, I should have probably thought through the exact details a bit more. Might have saved the time lost digging aimlessly through the codemirror docs.
 
-It had already spent a bit too much time on this app, and knowing that it was still in such a early stage caused me some panic. And out of panic, I turned to the very thing I feared the most... I vibe coded. Yeah, like the real raw vibe coding. I just asked chatgpt and pasted everything without trying to understand any of it. The whole process felt so wrong, but I was desperate. I want to never have to do it again please. But... It looks like gpt implemented everything nearly flawlessly. 
+I had already spent a bit too much time on this app, and knowing that it was still in such a early stage caused me some panic. And out of panic, I turned to the very thing I feared the most... I vibe coded. Yeah, like the real raw vibe coding. I just asked chatgpt and pasted everything without trying to understand any of it. The whole process felt so wrong, but I was desperate. I want to never have to do it again please. But... It looks like gpt implemented everything nearly flawlessly. 
 
 I did obviously go through all of the code later to get an idea of the architecture and stuff, and my opinion still remains the same. All of it not only flawless, but even so intelligent. Not the kind of stuff I could have come up with, let alone code. Except for a few tiny weird details which I later refined (though some still remain).
 
@@ -607,16 +609,246 @@ If the document is locked by another user, the user can proceed with opening the
 
 I also added some space to insert other components in the workspace in future. Like a chatting system. 
 
-`### sharing and access requests`
+### sharing and access requests
 I went through the whole folder and... Most of it fairly trivial really. The only new thing to me was the `InviteLandingComponent`. When an invite link is used, the user is redirected to the invite landing page. But this isn't a page really. All it does is, it shows the loading spinner, process the invite request on init, and redirects the user to the requests page. That's it. Seeing a component with such a minimal responsibility was kind of new.
 
 ### misc
+
 So that's it...? Kind of yeah. 
 
 I did make some changes on the backend too. Mainly on the database and repository layers. But I will talk about those later. I am a bit done for today. 
 
 I have so many plans for this app. But there are many issues too, like the ones I mentioned so far. The JWT behavior of my app is also not the most perfect. I remember wanting to add a way to cache the JWTs. I also want to add OAuth. For the bigger features, I have a chat system in mind, live editing, something that might use LLMs, and maybe even collaborative editing if possible. I also really want to make it such that you can run custom games inside these documents. I know that it's not what a "document" should be doing. But it seems it's possible by using something "iframe". I haven't looked into it so I don't know yet.
 
-idk. im leaving now. i am going to back much sooner the next time really!
+idk. im leaving now. i am going to back much sooner the next time really! byeeeee!!
+
+---
+
+## chapter 8
+(26-6-20, 26-6-21)
+
+The next thing I had in mind after the last chapter was the big one - Collaborative Editing. And just to make it a little more fun, I decided that I would make it horizontally scalable. So that was all I have been busy with from the past few weeks. And finally, it's done. And it works. Kind of.  
+
+I already had a vague idea about what I had to do. I knew Y.js already provides a very convenient way to transform document changes into CRDTs, I also knew about its ease of integration with codemirror. So the collaborative part, which is generally considered the most challenging, was actually my least concern. My concerns were more about the other parts instead. Things such as the transport layer and horizontal scalability.
+
+Watched a couple videos on youtube, learnt that redis pubsub could be a good choice for inter-node communication. 
+
+### go websocket server
+After I had ascertained the core functionalities of this part of the application, I wrote a prompt describing all the things this component should perform and gave it to GPT. Typically, GPT responds with with around 2-5 different files worth of code after such prompt. But this time, it didn't even give me the code, but instead a compressed archive containing all the files, packages, everything! I extracted and whoa. There were more 10 different files! All of it felt so overwhelming to review. Not to mention, a good portion of it felt quite complex too. 
+
+To be honest, I feel a bit overwhelmed about where to start explaining even now. Maybe I will just go package by package, and try explaining all the parts in an order that feels intuitive to me. 
+
+#### `auth`
+The auth-related stuff is fairly trivial on the coding side. Springboot backend, the source of truth of auth, validates user identity and permissions, generates a ticket (a random UUID). adds it to a redis store, and sends it back to client. Websocket server receives the request with the ticket included, it just checks the redis store to see if the ticket is present, if yes, the user is authenticated and the process will proceed. Simple.
+
+But why did I go with such design? Couldn't I have just provided the websocket server the JWT secret and have it verify user identity from the JWT which was issued by springboot. I would be utilizing the already existing parts without creating any new. I could use the RSA algorithm instead of SHA to get public and private keys. The private keys would stay with springboot, and the public key with ws servers. 
+
+The first reason why I didn't do it was that you can't include headers in websocket connection upgrade requests. The only way to pass additional data to a HTTP upgrade request is by including it in the URL params. You could say I run a generic HTTP request first containing the auth header, have ws server remember that user's auth along with an identifier for a short period of time, include the identifier as a URL param and make the HTTP upgrade request. But there's HAProxy in the middle. So either I should ensure that the request reaches the same node again, or I would need a central redis store for the identifier storage.  
+
+Or, you could argue that I include the JWT itself in the URL params. I considered it too, but apparently, it is considered a bad practice. My access requests are in-memory, so they expire soon. So it probably would have been fine to just include them in the URL. But come on, doesn't it just feel so clean when the ticket gets revoked as soon as it's purpose is fulfilled, rather than hoping for the case that the client does a page refresh after token theft. And there's another reason which I didn't mention too...
+
+The other reason is document permissions. Unlike JWT, this information can't be verified without querying the DB. So I either give ws server direct access to DB, or I have them act as a client to the springboot service to verify document permissions. You can see how convoluted it's getting. And that was why I went with the ticket pattern. Websocket server handles only it's core responsibility - transport, and springboot handles what it is specialized at - auth and the CRUD stuff.   
+
+The code itself is simple, as said before. `go-redis` provides the `redis.Client` object we use to interact with the redis store. `GetDel` is cool - It reads and deletes an entry in a single request (or transaction?). 
+
+What gets actually stored on redis is interesting though. The ticket itself is simple - a random UUID. But in the redis store, we store information about the request for which ticket was issued. Things like
+- DocumentID, Permission Level, UserID. So that the client can access only the document the ticket was issued for using the ticket.
+- Username. So that websocket servers can push `user-x joined/left` messages.
+Since it's springboot that's responsible for adding ticket to redis, accessing all of that information is easy.
+
+#### `broker`
+The purpose of this package is to provide an interface to interact with the redis pubsub broker. Each websocket server maintains as many channel subscriptions as the number of document sessions it handles. Every message received from the client for a specific document gets forwarded to the redis pubsub channel corresponding to that document. Similarly whenever a message is received from a specific document channel from redis, it forwards the message to be sent to its clients.
+
+Publishing and Subscribing - the two core responsibilities. 
+
+Both operations are associated to a single redis channel. So if I was designing, I would probably make a redis channel class and define the publish and subscribe methods for the class. I might also add a broker class to mimic that factory-like pattern. The broker may also store a list of active channels. But GPT did it differently. 
+
+Instead of associating the methods with the channel class, GPT defined both publish and subscribe methods in the broker class itself. They both take the channel id as a parameter to perform an operation on a channel. In my design, the subscription method would probably just return the go channel which forwards the incoming messages. Whereas in GPT's implementation, the subscribe method returns another custom class called subscription. The subscription class now contains the methods you use to interact with the subscription - things like getting the messages channel and closing the subscription. 
+
+I think the only difference in our designs is how GPT's design felt more nested, while mine was more flat. GPT's design surely feels more elegant, though I can't identify why exactly. Like how do you even learn this skill...
+
+Maybe the way `go-redis` works also influenced the design. `redis.Client` gets associated with broker class, whereas `redis.Pubsub` with the subscription class. The behavior is also similar - calling subscribe on `redis.Client` returns a `redis.Pubsub`.
+
+Another odd thing GPT did was to expose the messages received on a subscription using a different dedicated go channel. I call it odd because `pubsub.Channel()` already returns such a channel. So GPT is trying to take messages from one channel and just forwarding it to another more "application-specific" channel. The other parts of the application don't interact with the channel returned by go-redis, but with that application channel instead.
+
+To perform that forwarding, GPT defined this beautiful function, which I believe 
+```go
+// forwards messages from a channel provided by go-redis to the subscription's messages channel
+func (s *redisSubscription) forward() {
+	defer close(s.messages)
+	ch := s.pubsub.Channel() // channel provided by go-redis to receive messages from the subscription
+	
+	for {   // infinite loop because this will be a goroutine
+		select {  // listen for channel events
+		// common pattern to terminate goroutines
+		// the done channel doesnt actually send anything
+		// its sole purpose is to be closed
+		// the select statement responds when a channel closes
+		// so the done channel is essentially a way other parts of app can close the goroutine
+		case <-s.done:  
+			return
+		case msg, ok := <-ch: // new message from redis subscription
+			if !ok {
+				return
+			}
+			
+			payload := []byte(msg.Payload)
+			// backpressure handling for when our custom messages channel is full
+			select {
+			case s.messages <- payload:
+			case <-s.done:
+				return
+			}
+		}
+		// select is blocking
+		// so the goroutine stays blocked and consumes no CPU when no select case returns true
+	}
+}
+```
+
+`Subscribe` method is also interesting. We first call subscribe using the `redis.Client` which returns the subscription object. But then, we run this method `Receive()`, which apparently acts as a confirmation that the network is working. Only now we create the subscription object, and start the forward goroutine. 
+
+I am not sure if the confirmation thing was actually necessary though. Like wouldn't `go-redis` handle something like such internally.
+
+`sync.Once` was included in the subscription to ensure that a subscription gets closed only once.
+
+#### `hub`
+This packages contains the core of everything relevant to the core message distribution. The websocket server's main job is to manage document sessions and clients. So we create two main classes that represent the both
+- A `Client` class that represents a user connected to server.
+- A `Room` that represents a document session. 
+
+ We also create a `Hub` class that represents all the rooms this server handles. All methods regarding connecting to new clients, directing messages, connection termination, are defined for the `Hub` class. I feel it would have been more appropriate to define them for the `Room` class, but GPT went with the `Hub` class instead. But the `Hub` class does not directly interact with any of the websocket connections. 
+
+##### `Client`
+The websocket connections are included in the `Client` class. And only the `Client` class members directly interact with the connection object returned by gorilla websocket. And it makes sense since only clients are the only entities that form these websocket connections. The similar idea was utilized for `Room` design too. The `Room` class takes the responsibility of interacting with the `Subscription` class from the `broker` package.  
+
+`ReadPump` and `WritePump` are the two methods (which are run as goroutines) that interact with the websocket connection to send and receive almost all messages. There are also some other methods such as `SendEnvelope` and `SendError` that we use to send any additional messages, such as the user join/leave events. 
+
+**`WritePump`**
+`Client` class had a channel `Send` to which the messages to be sent to the client are received. The goroutine constantly listens to this channel and forwards the message when one is received. It also runs a ticker which runs the function `Conn.WriteMessage(ping)` at regular intervals. 
+
+Gorilla websocket maintains a "write deadline". If no messages get written to the socket by the server before the deadline, the connection is considered to have failed, and it gets automatically terminated. There is a method `SetWriteDeadline(deadline)` which can be used to extend the deadline. Every time a new message needs to be sent, or the ticker emits its event, we extend the write deadline and send a ping message using the method provided by the API. 
+
+I am not sure if we should really be handling this ping-pong mechanism. Feels like its something that should happen at a lower level - like at the websocket protocol level. But GPT did it, so it's here.
+
+**`ReadPump`**
+Unlike the write pump goroutine, which depended on a channel exposed by the `Client` class to receive messages to be sent, we don't expose any channel to which the client forwards received messages here. Instead, we use the `ReadMessage` method provided by gorilla websockets directly. I don't what exactly that method does, but it automatically blocks the goroutine until either a message or an error is received on the socket.
+
+`ReadPump` takes a `Hub` object as a parameter. This is because, the `Hub` class has a method `HandleClientEnvelope` which contains everything that should be done to a message received from the client, which mainly includes two things:
+- Broadcast the message to all the locally connected clients belonging to the same room.
+- Publish the message to the broker. 
+
+So all `ReadPump` does is: It stays blocked until `ReadMessage` returns a message -> Then it just forwards the message to Hub's `HandleClientEnvelope`.
+
+What I said was the main essence, but actually, GPT wrote the code such that some additional processing is done to the message before it is forwarded to `Hub`. This includes misc things like making sure that the message type is valid, making sure that the message is within allowed size ranges, trimming spaces in text, etc. I think it would have made more sense to add these guards on the frontend side than here. Cuz this step involves unmarshalling and marshalling which feels redundant. 
+
+Similar sending pings, we also listen for pongs from the client. Similar to the write deadline, there is also a read deadline. If no messages are read by the server, the connection is assumed to have failed, and it gets terminated. Whenever a pong is received from the client, we extend the read deadline. The `SetPongHandler` function provided by the API makes this process easy. 
+
+The cool thing is: We don't need to handle any of this ping-pongs on the client side at all. The browser websocket API handles it automatically. The standard is that servers always send pings and listen for pongs. 
+
+##### `Hub`
+The main two components of the `Hub`
+- A `docId:Room` map.
+- A `Broker` object from earlier.
+
+Maps in go are not thread-safe, i.e. race conditions can happen when multiple go routines interact with the map. So we use the `sync.RWMutex` to interact with it safely.
+
+I think the `broadcastLocal()` method of this class is the most interesting among everything else. We could have just pushed messages to all clients' `Send` channels. But what if a client has bad internet connection, so it's receiving messages slowly, because of which it's `Send` channel got full? It would block the goroutine completely, which would be terrible cuz we don't want other clients to stop receiving messages just because one client's buffer is full.
+
+So we include `default: slow = append(slow, client)`. Now, if a client's buffer becomes full, the client gets appended to a list of "slow" clients. Later, we can decide what we do with these slow clients. For now, we just disconnect them from the server.
+
+We run another new goroutine in this class `consumeRoom`. For every message received on a redis channel, this method calls `boradcastLocal` on the message. 
+
+The previously mentioned `HandleClientEnvelope` method runs both `broadcastLocal` and and a `broker.Publish` on the message to be sent to other clients. 
+
+I think the remaining methods are fairly straightforward so I am proceeding.
+
+#### `ws`
+`websocket.Upgrader` is what returns the main websocket connection object. After receiving a websocket connection request, we validate the ticket, run this method, create the client object, register it on the hub, and start the `ReadPump` and `WritePump` goroutines.
+
+We also send a connection acknowledgement message to the client that just formed connection. 
+
+About the `ctx context.Context` parameters you've been seeing in all those functions till now, we pass that parameter here, in `ServeHTTP`. as `r.Contet()`. Usually in HTTP servers, the same `r.Context` gets propagated across all methods of the server. `r.Context` gets cancelled as soon the HTTP request finishes or gets terminated due to some reason. If we passed `r.Context` everywhere in our app instead, the context would get cancelled as soon as upgrade handshake finishes. So we pass `context.Background` instead in other places where the method should persist as long as the websocket connection is alive. 
+
+But I am not exactly sure about its purpose though. I know that contexts are passed to control the function termination from other parts of the code by cancelling the context. But I don't think we cancelled any contexts anywhere so... 
+
+#### misc
+In the final main functions, we do the high level things such as creating the `ServeMux`, registering handlers, and all that. We use the same redis client for both ticket store and pubsub. 
+
+We also did this whose purpose I don't really understand
+```go
+ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+```
+
+And those are the most important parts I think. I still skipped over a few, like the `protocol` and `config` packages. Not saying that there are unimportant, in fact, quite the opposite. Cuz their design is one of the primary reasons why everything turned out so neat.
+
+I am seriously so impressed by how well it is designed. GPT is incredible. So many patterns I would normally find odd, turned out to make everything so neat.
+
+Like with defining interfaces and classes for things I probably wouldn't. Since only a single instance of things like ticket store, broker, hub etc. exist in a server, I would normally not think of creating separate classes for them. Like how we store any information that is likely to be arbitrary in specified variables and handle them using dedicated functions. It feels unnecessary but I can see how it makes things more maintainable. Like this one for example
+```go
+func (s *RedisTicketStore) key(ticket string) string {
+	return s.prefix + ticket
+}
+// prefix again has a field of its own! 
+// which makes it accessible from other parts too keeping everything flexible
+```
+
+I also really liked the idea of an `Envelope` class that we use to pack every message to be sent with. The same `Envelope` gets used across all other services too.
+
+Anyway, I am heading to the next services now. There's still so much more... Sigh.
+
+### the rest?
+
+Some meta-realization I just had... I think I might be spending too much time writing this. I started this entry with the intention that I would try to read the code, reason, and try to extract insights about the patterns and design choices GPT went with. But as you can see, it feels like all I have been doing was to just explain what's going on in the code. That too pretty badly. And it doesn't actually feel like I am getting much out of just explaining the code. What I was after was to uncover some kind of methodology behind these patterns by exploring possible explanations. But I am just robotically translating code into English. Nothing more. 
+
+So... I don't know... I think I am not going to do this. I am not saying that the files are trivial, and there isn't anything to learn from them. It's like, the files are complex and impressive in the sense of coming up with all of it. Understanding what's going on is... Kind of doable I feel. I have also left many comments across the code which can help with the specifics. 
+
+And... There is also still so many things I have got to do. 
+
+To be honest, I think this time, I was seeing this log more as an obligation than something I want to genuinely do. Like... I am feeling stressed about this thing that no one is ever going to read I don't know why. Maybe I am afraid that I am missing out on some learning experience? Or perhaps I am using this log as a way to feel safer about calling it *my* project - as you know, all of it was generated by GPT. 
+
+I don't know what it is, but I am allowing myself to not do it this time. It feels so bad saying it cuz this was the most complex part of the whole app. The feature I looked forward to the most. And I am saying I don't feel excited to discuss it...? 
+
+It's alright... I think...
+
+There are other ways to prove my understanding of the application too. Like by adding more features. I believe only someone who has a good mental model of how things are can add features that integrate well. Even after using AI. So... Maybe that is another way I can prove my understanding. 
+
+This log should be more about the intention with which I even started - To just discuss cool and interesting things. 
+
+I don't know what I am saying... I am sorry. I guess I will just talk about things that I feel like talking about. Nothing else. No pressure. Literally no one, except maybe a couple LLMs, is going to read this. So it doesn't matter lol.
+
+One funny thing which happened was with the websocket server. When I first asked GPT to give me the code, it didn't use ANY external packages in the code at all. I didn't realize it right away and lost like a whole day trying to understand all of the low level TCP sockets and manual redis stuff. I got so intimidated really lol. But yea, it was cool as hell too. I wish I could understand all of it some day.
+
+The collaboration state worker was such a last minute addition really. I had planned the websocket servers, load balancers, pubsub, redis cache, everything before. But when I was in the middle of making everything, it hit me - How will newly joined users synchronize with what has happened in the room? And how will persistence happen since the document state exists entirely client-side? 
+
+Initially, I was very confident about this idea of making clients do the persistence and synchronization work themselves. For new joiner synchronization, any one of the existing users in the room could send the room state for sync. But what about persistence? How do you decide which client should persist the document? I thought, maybe the websocket server could periodically send a persistence signal including the client id who should persist the document. Each time a different client id chosen at random. But multiple clients belonging to the same room could be connected to different websocket servers. My app has more than one websocket server, so how do you decide which websocket server sends the persistence signal? 
+
+It isn't impossible. I could have definitely made it work. But... I felt like it was getting a bit convoluted now. And GPT also kept stressing that relying on clients is a bad idea, though I don't agree that much. That's when I thought of a server-side secret room participant worker that silently maintains copy of everything going on in the room. Whenever a new user joins the room, they make a request to this worker to synchronize with other participants. Periodically, the worker also sends requests to springboot which updates the lock and persists the document. 
+
+It felt like a clean way to solve the issue, but I feel like I may have used a bit too many resources. One of the things I highlighted about this was that it was horizontally scalable. I felt like not making these collaboration workers scalable would make the rest of the application being scalable kinda obsolete. So I made the workers scalable as well. Which was easy tbh, because I already have the pubsub. All I had to mainly implement was the document id based routing. I didn't go with a load balancer this time, and instead used springboot act as a sort of load balancer itself. 
+
+I didn't want to expose the internal IPs of these collaboration workers again, so I thought that the users would interact with the worker via springboot. Springboot computes this basic `hash(docId)%(node_count)` rule to decide which node to route the request to.  
+
+HAProxy's TCP tunneling was interesting too, though I don't fully understand its working yet. I first thought that the load balancer would only act as a way to provide an internal node's IP, to which the client would directly connect to. Having every request go through a single point kind of felt like it defeats the purpose of horizontal scaling. But random youtube videos, posts, and GPT again, and it seems TCP tunneling is considered the best way. 
+
+Containerization has got to be the best thing though. I love just how much it eases the pain of setting up everything. I really wish I had done it earlier. 
+
+I am a bit unhappy with the way my frontend is designed too. The collaboration workspace is the main component that interacts with the websocket service. In my current design, the child components, yjs editor and chat system, they take observables as inputs, and emit events as outputs. The collaboration workspace subscribes to these observables and sends its own observables as inputs. This way data flows from the websocket connection to other components. 
+
+But it seems a better way to do it could have been by just passing the websocket service to the yjs editor and chat components directly. Connection's initialization and termination would have been handled by the workspace component, but listening and sending messages could have happened from the websocket service directly. I didn't have to do all that with observables. Such design would also nicely benefit from Angular's dependency injection.
+
+Something similar happened with the yjs editor too. Something I could have avoided if I had researched better. So apparently, there is this package called `y-codemirror` which makes the process of integrating Yjs with codemirror even easy. If you noticed, my editor currently doesn't show other participants' cursors on the screen. I tried to do it but figured that it was way too complex for how much it adds. And I was already feeling a bit exhausted, so I decided to skip that feature.
+
+If you used `y-codemirror`, participant cursors already come built-in. Not only that, but also synchronization and so many other things. Maybe I didn't need to write this custom synchronization flow at all. I could still change it now, but... I already spent so much time, and... I just did not feel like scraping it all. I should look into things more from the next time.
+
+But you shouldn't blame yourself cuz it was GPT that did it right? No, the only reason GPT did it was because I had explicitly stated all of it in the description prompt. Maybe if I had provided lesser details, it might have produced something better. 
+
+... Sigh. I still feel a bit guilty-like that I am not doing what I committed to just because "I don't feel like it." But there are so many other things I should put my into. I need a job after all. 
+
+About this project... Idk. It was okay I guess. All of it may sound like it's complex but it really wasn't at all. GPT completely trivialized the complex part of this project. I need to make something better. I also want to still add new features to this - Again I might be being a bit ambitious. Things like custom HTML sandbox inside the editor, a way to communicate data between the external editor and the sandbox, something related to AI probably, maybe voice chat, or heck maybe turning this whole thing into a kind of social media site where you can join any users' rooms. There are also the more immediate and real ones I have in mind too - Such as the Kubernetes integration, polishing the UI a bit, OIDC, and maybe giving this some name. I am thinking Onyx for the name, and would use Fire Red's boulder badge as the icon. 
+
+Idk. I might be back later. Though probably even later this time. I will try to be more mindful from now on. 
+
+bye.
 
 ---

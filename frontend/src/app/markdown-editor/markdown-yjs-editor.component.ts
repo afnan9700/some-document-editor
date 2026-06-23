@@ -143,7 +143,7 @@ export class MarkdownYjsEditorComponent implements AfterViewInit, OnDestroy {
   private readonly editorHost = viewChild.required<ElementRef<HTMLDivElement>>('editorHost');
   private readonly view = signal<EditorView | null>(null);
 
-  private readonly themeCompartment = new Compartment();
+  // private readonly themeCompartment = new Compartment();
   private readonly interactionCompartment = new Compartment();
   private readonly extrasCompartment = new Compartment();
   private readonly ariaCompartment = new Compartment();
@@ -184,16 +184,16 @@ export class MarkdownYjsEditorComponent implements AfterViewInit, OnDestroy {
       });
     });
 
-    effect(() => {
-      const view = this.view();
-      if (!view) {
-        return;
-      }
+    // effect(() => {
+    //   const view = this.view();
+    //   if (!view) {
+    //     return;
+    //   }
 
-      view.dispatch({
-        effects: this.themeCompartment.reconfigure(this.theme().extensions),
-      });
-    });
+    //   view.dispatch({
+    //     effects: this.themeCompartment.reconfigure(this.theme().extensions),
+    //   });
+    // });
 
     // extra extensions change effect
     effect(() => {
@@ -359,7 +359,7 @@ export class MarkdownYjsEditorComponent implements AfterViewInit, OnDestroy {
           EditorState.readOnly.of(this.isReadOnly()),  // to prevent any extensions from making changes
           EditorView.editable.of(!this.isReadOnly()),  // to make the editor non-editable
         ]),
-        this.themeCompartment.of(this.theme().extensions),
+        // this.themeCompartment.of(this.theme().extensions),
         this.extrasCompartment.of(this.extraExtensions()),
         this.ariaCompartment.of(
           EditorView.contentAttributes.of({

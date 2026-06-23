@@ -26,8 +26,16 @@ import {
 import { MarkdownYjsEditorComponent } from '../markdown-editor/markdown-yjs-editor.component';
 import { CollaborationChatComponent } from './collab-chat.component';
 
-export type CollabWorkspaceMode = 'initialize' | 'join';
-type WorkspacePhase = 'idle' | 'connecting' | 'syncing' | 'active' | 'error';
+export type CollabWorkspaceMode = 
+  'initialize' 
+  | 'join';
+
+type WorkspacePhase = 
+  'idle' // initial state of component
+  | 'connecting' //  when the websocket connection is in progress
+  | 'syncing'  // when the synchronization is in progress 
+  | 'active'   // connected and ready
+  | 'error';
 
 @Component({
   selector: 'app-collab-workspace',
@@ -47,12 +55,6 @@ type WorkspacePhase = 'idle' | 'connecting' | 'syncing' | 'active' | 'error';
         >
           <div class="flex items-center gap-3">
             <span class="text-sm font-medium">Document #{{ documentId() }}</span>
-
-            <!-- @if (mode() === 'initialize') {
-              <span class="badge badge-primary badge-sm">Host</span>
-            } @else {
-              <span class="badge badge-secondary badge-sm">Guest</span>
-            } -->
           </div>
 
           <span class="inline-flex items-center gap-1.5 text-sm opacity-60">
@@ -213,33 +215,35 @@ export class CollabWorkspaceComponent implements OnInit {
     try {
       this.phase.set('connecting');
 
-      // 1. Request a WS ticket and open the socket.
+      // Request a WS ticket and open the socket.
       await this.wsService.connect(this.documentId());
 
-      // 2. Wait for the server's connection acknowledgement.
+      // Wait for the server's connection acknowledgement.
       await firstValueFrom(
         this.wsService.inbound$.pipe(filter(e => e.type === 'connection.ack')),
       );
 
       this.phase.set('syncing');
 
-      // 3. Register the document on the backend. The backend also starts the
-      //    synchronization service in the background.
+      // Register the document on the backend. The backend also starts the
+      // synchronization service in the background.
       const response: InitializeDocumentResponse = await firstValueFrom(
         this.workerService.initializeDocument(this.documentId()),
       );
 
-      // 4. Open the live feeds before revealing the UI so the editor and chat
-      //    receive every message from the moment they mount.
+      // Open the live feeds before revealing the UI so the editor and chat
+      // receive every message from the moment they mount.
       this.routeDocChanges();
       this.routeParticipantEvents();
       this.routeChatMessages();
 
-      // 5. Supply the plain-text bootstrap and switch to active.
+      // Supply the plain-text bootstrap and switch to active.
       // this.initialSnapshot.set(response.content);
 
-
       // !!! A VERY HAPHAZARD TEMPORARY FIX !!! 
+      // using the content from the response provided by springboot is causing editor to not synchronize with other yjs updates
+      // so synchronizing again with the collaboration worker to get the working yjs state  
+      // the previous request initialized the worker so this will work
       const responseAgain: WorkerSyncResponse = await firstValueFrom(
         this.workerService.syncDocument(this.documentId()),
       );
@@ -248,7 +252,6 @@ export class CollabWorkspaceComponent implements OnInit {
       for (const entry of responseAgain.chatHistory) {
         this.chatMessages$.next(entry);
       }
-      // ONLY TEMPORARY
 
       this.phase.set('active');
 
@@ -264,52 +267,47 @@ export class CollabWorkspaceComponent implements OnInit {
     try {
       this.phase.set('connecting');
 
-      // 1. Request a WS ticket and open the socket.
+      // Request a WS ticket and open the socket.
       await this.wsService.connect(this.documentId());
 
-      // 2. Start buffering ALL inbound messages immediately.
-      //    This prevents any update from being lost while the sync HTTP
-      //    request is in flight.
+      // Start buffering ALL inbound messages immediately.
+      // his prevents any update from being lost while the sync HTTP request is in flight.
       const buffer: CollaborationEnvelope[] = [];
       const bufferSub = this.wsService.inbound$.subscribe(e => buffer.push(e));
 
-      // 3. Wait for the server's connection acknowledgement.
-      //    The ack lands in the buffer too — that is intentional and harmless,
-      //    since we filter by type when draining.
+      // Wait for the server's connection acknowledgement.
+      // The ack lands in the buffer too and is intentional and harmless because it is later filtered by type
       await firstValueFrom(
         this.wsService.inbound$.pipe(filter(e => e.type === 'connection.ack')),
       );
 
       this.phase.set('syncing');
 
-      // 4. Fetch the live Yjs state, chat history, and participant map from
-      //    the backend.
+      // Fetch the live Yjs state, chat history, and participant map from
+      // the backend.
       const response: WorkerSyncResponse = await firstValueFrom(
         this.workerService.syncDocument(this.documentId()),
       );
 
-      // 5. Stop buffering — real-time routing takes over from here.
+      // Stop buffering real-time routing takes over from here.
       bufferSub.unsubscribe();
 
-      // 6. Seed participant state from the sync snapshot.
-      this.userCount.set(response.userCount - 1); // because the frontend will listen to its own participant joining message
+      // Seed participant state from the sync snapshot.
+      this.userCount.set(response.userCount - 1); // -1 because the frontend will listen to its own participant joining message
       this.usernames.set(parseParticipantMap(response.participantMap));
 
-      // 7. Push the full Yjs state snapshot first, so the editor starts from
-      //    the correct base, then drain buffered doc.change updates on top.
-      //    The ReplaySubject delivers these even before the editor mounts.
+      // Push the full Yjs state snapshot first, so the editor starts from
+      // the correct base, then drain buffered doc.change updates on top.
+      // The ReplaySubject delivers these even before the editor mounts.
       this.remoteUpdates$.next(decodeBase64ToUint8(response.yjsStateBase64));
 
-      // 8. Push the persisted chat history before the buffered live messages
-      //    so the timeline is in the correct order.
+      // Push the persisted chat history before the buffered live messages
+      // so the timeline is in the correct order.
       for (const entry of response.chatHistory) {
         this.chatMessages$.next(entry);
       }
 
-      // 9. Drain the buffer in arrival order.
-      //    doc.change    → apply on top of the Yjs snapshot
-      //    participant   → adjust live count and add to chat
-      //    chat / error  → forward to chat
+      // Drain the buffer in arrival order
       for (const envelope of buffer) {
         switch (envelope.type) {
 
@@ -349,12 +347,12 @@ export class CollabWorkspaceComponent implements OnInit {
         }
       }
 
-      // 10. Open the live feeds for ongoing updates.
+      // Open the live feeds for ongoing updates.
       this.routeDocChanges();
       this.routeParticipantEvents();
       this.routeChatMessages();
 
-      // 11. Reveal the UI.
+      // Reveal the UI.
       this.phase.set('active');
 
     } catch (err) {
@@ -424,7 +422,7 @@ export class CollabWorkspaceComponent implements OnInit {
         payload: { update: encodeUint8ToBase64(update) },
       });
     } catch {
-      // Socket may be momentarily unavailable; silently drop the update.
+      // Socket may be momentarily unavailable. silently drop the update.
       // Yjs CRDT semantics mean the peer will re-sync on the next exchange.
     }
   }

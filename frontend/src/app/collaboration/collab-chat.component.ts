@@ -28,12 +28,10 @@ marked.setOptions({
         <header class="flex items-start justify-between gap-3">
           <div>
             <h2 class="card-title text-base">Chat</h2>
-            <p class="text-sm opacity-70">All messages stay on one side, Discord-style.</p>
           </div>
-
-          @if (messageCount() > 0) {
+          <!-- @if (messageCount() > 0) {
             <span class="badge badge-ghost">{{ messageCount() }}</span>
-          }
+          } -->
         </header>
 
         <div
@@ -137,6 +135,7 @@ export class CollaborationChatComponent {
   private nextLocalId = 0;
 
   constructor() {
+    // effect for new messages
     effect((onCleanup) => {
       const source$ = this.incomingMessages$();
       const subscription: Subscription = source$.subscribe((envelope) => {
@@ -149,6 +148,7 @@ export class CollaborationChatComponent {
       onCleanup(() => subscription.unsubscribe());
     });
 
+    // effect to scroll the component down such that newest message is visible
     effect(() => {
       this.messages();
 
@@ -164,6 +164,7 @@ export class CollaborationChatComponent {
     });
   }
 
+  // update draft signal value on textarea input
   onDraftInput(event: Event): void {
     const target = event.target;
     if (!(target instanceof HTMLTextAreaElement)) {
@@ -173,6 +174,7 @@ export class CollaborationChatComponent {
     this.draft.set(target.value);
   }
 
+  // send on Enter
   onDraftKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Enter' || event.shiftKey) {
       return;
@@ -182,6 +184,7 @@ export class CollaborationChatComponent {
     this.submitMessage(event);
   }
 
+  // submit message by emitting event
   submitMessage(event?: Event): void {
     event?.preventDefault();
 
@@ -194,6 +197,7 @@ export class CollaborationChatComponent {
     this.draft.set('');
   }
 
+  // converting received envelope into renderable ChatLine
   private toChatLine(envelope: CollaborationEnvelope<unknown>): ChatLine | null {
     const sentAtLabel = this.formatSentAt(envelope.sentAt);
     const id = envelope.messageId ?? `local-${++this.nextLocalId}`;
