@@ -81,8 +81,6 @@ public class DocumentWorkerProxyService {
                     .body(finalBytes);
 
         } catch (Exception e) {
-            System.out.println(workerResponse);
-            System.out.println(e);
             // Fallback if something goes wrong while merging JSON
             return ResponseEntity.status(500)
                     .body("{\"error\":\"failed_to_build_response\"}".getBytes(StandardCharsets.UTF_8));
