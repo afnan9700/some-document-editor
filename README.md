@@ -36,8 +36,8 @@ Compose pulls images for the infra pieces (redis, postgres, haproxy), but the fo
 1. **Clone the repo**
 
    ```bash
-   git clone git@github.com:afnan9700/some-java-project.git
-   cd some-java-project
+   git clone git@github.com:afnan9700/some-document-editor.git
+   cd some-document-editor
    ```
 
 2. **Create the environment file** (the compose file expects a `.env`)
