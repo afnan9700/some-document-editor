@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -30,10 +31,17 @@ public class InternalAuthFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        // This filter is a @Component bean, so Spring Security auto-registers it
+        // into every filter chain. Restrict it to only /internal/** requests.
+        return !request.getRequestURI().startsWith("/internal/");
+    }
+
+    @Override
     protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
         String header = request.getHeader("Authorization");
@@ -52,6 +60,8 @@ public class InternalAuthFilter extends OncePerRequestFilter {
             }
             else {
                 log.warn("Invalid token for 'internal-worker'");
+                log.warn("Invalid token received: {}", token);
+                log.warn("Expected token: {}", internalToken);
             }
         }
 

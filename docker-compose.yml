@@ -39,6 +39,7 @@ services:
 
   redis:
     image: docker.io/library/redis:7-alpine
+    container_name: app-redis
     ports:
       - "6379:6379"
     volumes:
@@ -46,22 +47,52 @@ services:
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
-  ws-service:
+
+  ws-service-1:
     build:
       context: ./ws-service
+    container_name: app-ws-service-1
     env_file:
       - .env
-    ports:
-      - "8081:8081"
+    environment:
+      NODE_ID: ws-node-1
+    expose:
+      - "8081"
     depends_on:
       redis:
         condition: service_healthy
-    expose: 
+
+  ws-service-2:
+    build:
+      context: ./ws-service
+    container_name: app-ws-service-2
+    env_file:
+      - .env
+    environment:
+      NODE_ID: ws-node-2
+    expose:
       - "8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  ws-service-3:
+    build:
+      context: ./ws-service
+    container_name: app-ws-service-3
+    env_file:
+      - .env
+    environment:
+      NODE_ID: ws-node-3
+    expose:
+      - "8081"
+    depends_on:
+      redis:
+        condition: service_healthy
 
   haproxy:
     image: docker.io/library/haproxy:2.9-alpine
@@ -70,7 +101,11 @@ services:
     volumes:
       - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     depends_on:
-      ws-service:
+      ws-service-1:
+        condition: service_started
+      ws-service-2:
+        condition: service_started
+      ws-service-3:
         condition: service_started
 
   collaboration-state-worker:

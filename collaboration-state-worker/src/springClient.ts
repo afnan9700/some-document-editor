@@ -14,6 +14,8 @@ export class SpringClient {
   ): Promise<void> {
     const url = normalizeUrl(this.baseUrl, `/internal/workers/documents/${documentId}/sync`);
 
+    console.log('Bearer Token:', this.bearerToken); // Log the bearer token for debugging
+
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this.bearerToken}`,

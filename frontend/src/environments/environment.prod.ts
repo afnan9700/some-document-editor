@@ -1,5 +1,5 @@
 export const environment = {
   production: true,
   apiBaseUrl: 'https://api.yourdomain.com',
-  wsBaseUrl: 'ws://localhost:8081/ws',
+  wsBaseUrl: 'ws://localhost:3001/ws',
 };
